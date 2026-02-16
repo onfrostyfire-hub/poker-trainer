@@ -4,7 +4,7 @@ import random
 import pandas as pd
 import os
 
-# --- ВЕРСИЯ 20.0 (CRASH PROTECTION & AUTO-FIX) ---
+# --- ВЕРСИЯ 20.1 (SYNTAX FIX & ROBUST LOGIC) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -29,7 +29,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- ЛОГИКА ---
+# --- ЛОГИКА ДАННЫХ ---
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
@@ -46,8 +46,11 @@ if not ranges_db: st.error("Ranges not found!"); st.stop()
 SRS_FILE = 'srs_data.json'
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
@@ -127,13 +130,13 @@ if 'history' not in st.session_state: st.session_state.history = []
 
 # --- ГЕНЕРАЦИЯ ---
 if st.session_state.hand is None:
-    # Выбор спота
+    # 1. Выбор спота
     if train_mode == "Manual (Single Spot)":
         st.session_state.active_spot = selected_spot
     else:
         st.session_state.active_spot = random.choice(target_spots)
     
-    # Защита от смены категории (ВАЖНОЕ ИСПРАВЛЕНИЕ)
+    # 2. ПРОВЕРКА НА ВАЛИДНОСТЬ (FIXED CRASH)
     if st.session_state.active_spot not in ranges_db[cat][sub]:
         st.session_state.active_spot = list(ranges_db[cat][sub].keys())[0]
 
@@ -146,13 +149,13 @@ if st.session_state.hand is None:
     
     if not possible_hands: possible_hands = all_hands
     
-    # SRS выбор руки
+    # 3. SRS Выбор руки
     srs_data = load_srs_data()
     srs_spot_id = f"{cat}_{sub}_{spot_id}".replace(" ", "_")
     weights = [srs_data.get(f"{srs_spot_id}_{h}", 100) for h in possible_hands]
     st.session_state.hand = random.choices(possible_hands, weights=weights, k=1)[0]
     
-    # Масти
+    # 4. Масти
     h_str = st.session_state.hand
     pool = ['♠', '♥', '♦', '♣']
     s1 = random.choice(pool)
@@ -161,11 +164,11 @@ if st.session_state.hand is None:
     
     st.session_state.srs_mode = False
 
-# --- ПОДГОТОВКА ОТРИСОВКИ ---
+# --- ПОДГОТОВКА ДАННЫХ ДЛЯ ОТРИСОВКИ ---
 current_spot = st.session_state.active_spot
 
 # ЗАЩИТА: Если current_spot пустой (при первом запуске), ставим дефолт
-if current_spot is None:
+if current_spot is None or current_spot not in ranges_db[cat][sub]:
     current_spot = list(ranges_db[cat][sub].keys())[0]
     st.session_state.active_spot = current_spot
 
