@@ -4,10 +4,10 @@ import random
 import pandas as pd
 import os
 
-# --- ВЕРСИЯ 19.0 (AUTO-ROTATION & SMART ZONE MIX) ---
+# --- ВЕРСИЯ 20.0 (CRASH PROTECTION & AUTO-FIX) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
-# --- CSS СТИЛИ (4-цветная колода и визуал стола) ---
+# --- CSS СТИЛИ ---
 st.markdown("""
 <style>
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
@@ -29,7 +29,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- ЛОГИКА ДАННЫХ ---
+# --- ЛОГИКА ---
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
@@ -40,13 +40,13 @@ def load_ranges():
     except: return {}
 
 ranges_db = load_ranges()
+if not ranges_db: st.error("Ranges not found!"); st.stop()
 
 # --- SRS SYSTEM ---
 SRS_FILE = 'srs_data.json'
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try:
-            with open(SRS_FILE, 'r') as f: return json.load(f)
+        try: with open(SRS_FILE, 'r') as f: return json.load(f)
         except: return {}
     return {}
 
@@ -94,7 +94,6 @@ with st.sidebar:
     cat = st.selectbox("Category", list(ranges_db.keys()))
     sub = st.selectbox("Section", list(ranges_db[cat].keys()))
     
-    # Режим ротации зон
     train_mode = st.radio("Training Mode", ["Manual (Single Spot)", "Early Mix (EP/MP)", "Late Mix (CO/BU/SB)"])
     
     all_spots = list(ranges_db[cat][sub].keys())
@@ -106,14 +105,18 @@ with st.sidebar:
     else:
         target_spots = all_spots
 
-    # Для ручного режима показываем выбор конкретного спота
+    if not target_spots: target_spots = all_spots # Fallback
+    
+    selected_spot = None
     if train_mode == "Manual (Single Spot)":
         selected_spot = st.selectbox("Select Spot", target_spots)
-    else:
-        st.info(f"Mixing {len(target_spots)} positions...")
-        selected_spot = None # Будет выбрано случайно
 
-# --- ЛОГИКА СОСТОЯНИЯ ---
+    if st.button("Reset Stats"):
+        st.session_state.stats = {'correct': 0, 'total': 0}
+        st.session_state.history = []
+        st.rerun()
+
+# --- СОСТОЯНИЕ ---
 if 'hand' not in st.session_state: st.session_state.hand = None
 if 'active_spot' not in st.session_state: st.session_state.active_spot = None
 if 'suits' not in st.session_state: st.session_state.suits = None
@@ -122,28 +125,34 @@ if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 if 'history' not in st.session_state: st.session_state.history = []
 
-# --- ГЕНЕРАЦИЯ НОВОЙ РАЗДАЧИ ---
+# --- ГЕНЕРАЦИЯ ---
 if st.session_state.hand is None:
-    # 1. Определяем спот
+    # Выбор спота
     if train_mode == "Manual (Single Spot)":
         st.session_state.active_spot = selected_spot
     else:
         st.session_state.active_spot = random.choice(target_spots)
     
-    # 2. Получаем данные спота
+    # Защита от смены категории (ВАЖНОЕ ИСПРАВЛЕНИЕ)
+    if st.session_state.active_spot not in ranges_db[cat][sub]:
+        st.session_state.active_spot = list(ranges_db[cat][sub].keys())[0]
+
     spot_id = st.session_state.active_spot
     data = ranges_db[cat][sub][spot_id]
+    
     full_r = data.get("full", "") if isinstance(data, dict) else str(data)
     train_r = data.get("training", full_r) if isinstance(data, dict) else str(data)
     possible_hands = parse_range_to_list(train_r)
     
-    # 3. Выбираем руку с учетом SRS
+    if not possible_hands: possible_hands = all_hands
+    
+    # SRS выбор руки
     srs_data = load_srs_data()
     srs_spot_id = f"{cat}_{sub}_{spot_id}".replace(" ", "_")
     weights = [srs_data.get(f"{srs_spot_id}_{h}", 100) for h in possible_hands]
     st.session_state.hand = random.choices(possible_hands, weights=weights, k=1)[0]
     
-    # 4. Масти
+    # Масти
     h_str = st.session_state.hand
     pool = ['♠', '♥', '♦', '♣']
     s1 = random.choice(pool)
@@ -152,15 +161,21 @@ if st.session_state.hand is None:
     
     st.session_state.srs_mode = False
 
-# --- ПОДГОТОВКА ДАННЫХ ДЛЯ ОТРИСОВКИ ---
+# --- ПОДГОТОВКА ОТРИСОВКИ ---
 current_spot = st.session_state.active_spot
+
+# ЗАЩИТА: Если current_spot пустой (при первом запуске), ставим дефолт
+if current_spot is None:
+    current_spot = list(ranges_db[cat][sub].keys())[0]
+    st.session_state.active_spot = current_spot
+
 spot_data = ranges_db[cat][sub][current_spot]
 full_range_str = spot_data.get("full", "") if isinstance(spot_data, dict) else str(spot_data)
 srs_key_id = f"{cat}_{sub}_{current_spot}".replace(" ", "_")
 
 st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{current_spot}</h3>", unsafe_allow_html=True)
 
-# --- ВИЗУАЛ СТОЛА ---
+# --- ВИЗУАЛ ---
 def get_seats_labels(spot_name):
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     u = spot_name.upper(); idx = 0
@@ -188,6 +203,7 @@ for i in range(1, 6):
     lbl = seats[i]
     chip = f'<div class="chip {"sb-chip" if lbl=="SB" else "bb-chip"}">{lbl}</div>' if lbl in ["SB", "BB"] else ""
     html += f'<div class="seat pos-{i}">{chip}<span class="seat-label">{lbl}</span><span class="seat-sub">Fold</span></div>'
+
 hero_lbl = seats[0]
 hero_chip = f'<div class="chip {"sb-chip" if hero_lbl=="SB" else "bb-chip"}" style="top:-15px; right:-10px;">{hero_lbl}</div>' if hero_lbl in ["SB", "BB"] else ""
 html += f'<div class="hero-panel">{hero_chip}<div style="display:flex; flex-direction:column; align-items:center; margin-right:5px;"><span style="color:gold; font-weight:bold; font-size:12px;">HERO</span><span style="color:#555; font-size:10px;">{hero_lbl}</span></div><div class="card"><div class="tl {c1}">{r1}<br>{s1}</div><div class="cent {c1}">{s1}</div></div><div class="card"><div class="tl {c2}">{r2}<br>{s2}</div><div class="cent {c2}">{s2}</div></div></div></div>'
