@@ -1,6 +1,6 @@
 {
-  "My Custom Ranges": {
-    "Open Raise": {
+  "Custom Training": {
+    "Boundary Defense": {
       "EP (UTG)": {
         "full": "AA,KK,QQ,JJ,TT,99,88,77,66,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s:0.5,KQ,KJ,KTs,K9s,K8s,QJs,QTs,Q9s,JTs,J9s,T9s",
         "training": "66,ATo,A7s,A6s,A3s,A2s,KJo,K9s,K8s,Q9s,J9s,T9s,55,44,33,22,KTo,K8s,K7s,QJo,Q8s,J8s,T8s,98s,97s,87s,76s,65s,54s"
