@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 12.0 (CRASH FIX & LOGIC SEPARATION) ---
+# --- ВЕРСИЯ 13.0 (STRICT TRAINING MODE) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -93,10 +93,17 @@ st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa
 
 # --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ ---
 spot_data = ranges_db[cat][sub][spot]
+
 if isinstance(spot_data, dict):
+    # НОВЫЙ ФОРМАТ
     full_range_str = spot_data.get("full", "")
-    training_range_str = spot_data.get("training", full_range_str)
+    training_range_str = spot_data.get("training", "") # Берем training
+    
+    # Если training пустой по ошибке, но есть full, используем full (или наоборот)
+    if not training_range_str:
+        training_range_str = full_range_str
 else:
+    # СТАРЫЙ ФОРМАТ (ПРОСТО СТРОКА)
     full_range_str = str(spot_data)
     training_range_str = str(spot_data)
 
@@ -106,29 +113,28 @@ if 'suits' not in st.session_state: st.session_state.suits = None
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# --- ШАГ 1: ГЕНЕРАЦИЯ РУКИ (Если нет) ---
+# --- ШАГ 1: ГЕНЕРАЦИЯ РУКИ ---
+possible_hands = parse_range_to_list(training_range_str)
+
+# ИНФО О ПУЛЕ (ДЛЯ ПРОВЕРКИ)
+st.sidebar.divider()
+st.sidebar.info(f"Hands in Pool: {len(possible_hands)}")
+
 if st.session_state.hand is None:
-    possible_hands = parse_range_to_list(training_range_str)
     if not possible_hands:
-        possible_hands = all_hands # Фолбек
+        possible_hands = all_hands # Фолбек если совсем всё плохо
+    
     st.session_state.hand = random.choice(possible_hands)
-    # Сбрасываем масти, так как рука новая
     st.session_state.suits = None
 
-# --- ШАГ 2: ГЕНЕРАЦИЯ МАСТЕЙ (Если нет) ---
-# Это лечит ошибку: даже если рука осталась старая, мы сгенерируем масти
+# --- ШАГ 2: ГЕНЕРАЦИЯ МАСТЕЙ ---
 if st.session_state.suits is None:
     h_str = st.session_state.hand
     suits_pool = ['♠', '♥', '♦', '♣']
     s1 = random.choice(suits_pool)
-    
-    if 's' in h_str: # Suited
-        s2 = s1
-    elif 'o' in h_str: # Offsuit
-        s2 = random.choice([x for x in suits_pool if x != s1])
-    else: # Pairs
-        s2 = random.choice([x for x in suits_pool if x != s1])
-    
+    if 's' in h_str: s2 = s1
+    elif 'o' in h_str: s2 = random.choice([x for x in suits_pool if x != s1])
+    else: s2 = random.choice([x for x in suits_pool if x != s1])
     st.session_state.suits = [s1, s2]
 
 # --- ОПРЕДЕЛЕНИЕ ПОЗИЦИЙ ---
@@ -172,9 +178,10 @@ html += '</div></div>'
 
 st.markdown(html, unsafe_allow_html=True)
 
-# --- ЛОГИКА И КНОПКИ ---
+# --- ПРОВЕРКА ОТВЕТА (ПО FULL RANGE) ---
 weight = get_weight(st.session_state.hand, full_range_str)
 
+# --- КНОПКИ ---
 c1, c2 = st.columns(2, gap="small")
 if st.session_state.msg is None:
     with c1:
@@ -195,7 +202,7 @@ else:
     else: st.error(msg)
     if st.button("Next Hand ➡️"):
         st.session_state.hand = None
-        st.session_state.suits = None # Сброс мастей
+        st.session_state.suits = None
         st.session_state.msg = None
         st.rerun()
 
