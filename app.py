@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 23.0 (REALISTIC TABLE CHIPS & DEALER BUTTON) ---
+# --- ВЕРСИЯ 23.1 (SYNTAX FIX & REALISTIC CHIPS) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -13,7 +13,7 @@ st.markdown("""
 <style>
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
     
-    /* FIX IPHONE LAYOUT */
+    /* IPHONE FIX */
     div[data-testid="column"] { width: 50% !important; flex: 1 1 50% !important; min-width: 50% !important; }
     
     /* СТОЛ */
@@ -26,7 +26,7 @@ st.markdown("""
     }
     .table-logo { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.08); font-weight: bold; font-size: 24px; pointer-events: none; }
     
-    /* МЕСТА (Без встроенных фишек теперь) */
+    /* МЕСТА */
     .seat { 
         position: absolute; width: 55px; height: 55px; 
         background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; 
@@ -44,8 +44,6 @@ st.markdown("""
     .opp-c2 { transform: rotate(10deg); left: 20px; }
 
     /* === НОВЫЕ ФИШКИ НА СТОЛЕ === */
-    
-    /* Дилерская кнопка (Желтая) */
     .dealer-button {
         position: absolute; width: 22px; height: 22px;
         background: #ffd700; border: 2px solid #e6c200; border-radius: 50%;
@@ -53,24 +51,15 @@ st.markdown("""
         display: flex; justify-content: center; align-items: center;
         box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: 15;
     }
-
-    /* Покерная фишка (Черно-красная) */
     .poker-chip {
         width: 24px; height: 24px;
-        background: #111; /* Черный центр */
-        border: 3px dashed #d32f2f; /* Красные насечки */
-        border-radius: 50%;
+        background: #111; border: 3px dashed #d32f2f; border-radius: 50%;
         box-shadow: 1px 1px 4px rgba(0,0,0,0.7);
     }
-    
-    /* Контейнер для стопки фишек */
     .blind-stack { position: absolute; z-index: 15; display: flex; flex-direction: column; align-items: center; }
-    /* Смещение для второй фишки в стопке */
     .chip-stacked { margin-top: -18px; }
 
-    /* ============================ */
-
-    /* ПОЗИЦИИ МЕСТ */
+    /* ПОЗИЦИИ */
     .pos-1 { bottom: 20%; left: 4%; } 
     .pos-2 { top: 20%; left: 4%; } 
     .pos-3 { top: -20px; left: 50%; transform: translateX(-50%); } 
@@ -84,7 +73,7 @@ st.markdown("""
     .cent { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 28px; }
     .suit-red { color: #d32f2f; } .suit-blue { color: #1e88e5; } .suit-black { color: #111; }
 
-    /* КНОПКИ ДЕЙСТВИЙ */
+    /* КНОПКИ */
     div.stButton > button { width: 100%; height: 60px !important; font-size: 18px !important; font-weight: 800; border-radius: 12px; border: none; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }
     div.stButton > button:active { transform: scale(0.96); }
     div[data-testid="column"]:nth-of-type(1) div.stButton > button { background-color: #c62828 !important; color: white !important; box-shadow: 0 4px 0 #8e0000; }
@@ -92,40 +81,50 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- ФАЙЛЫ И ДАННЫЕ ---
+# --- ФАЙЛЫ ---
 HISTORY_FILE = 'history_log.csv'
 SRS_FILE = 'srs_data.json'
 RANGES_FILE = 'ranges.json'
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
-# --- ФУНКЦИИ ЗАГРУЗКИ ---
+# --- ФУНКЦИИ ЗАГРУЗКИ (ИСПРАВЛЕНЫ) ---
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
-        with open(RANGES_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return {}
+        with open(RANGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
+
 ranges_db = load_ranges()
 
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
-    with open(SRS_FILE, 'w') as f: json.dump(data, f)
+    with open(SRS_FILE, 'w') as f:
+        json.dump(data, f)
 
 def load_history():
-    if os.path.exists(HISTORY_FILE): return pd.read_csv(HISTORY_FILE)
+    if os.path.exists(HISTORY_FILE):
+        return pd.read_csv(HISTORY_FILE)
     return pd.DataFrame(columns=["Date", "Spot", "Hand", "Result", "CorrectAction"])
 
 def save_to_history(record):
     df_new = pd.DataFrame([record])
-    if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
-    else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+    if not os.path.exists(HISTORY_FILE):
+        df_new.to_csv(HISTORY_FILE, index=False)
+    else:
+        df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
-# --- ЛОГИКА SRS И ПАРСИНГА ---
+# --- ЛОГИКА ---
 def update_srs_smart(spot_id, hand, rating):
     data = load_srs_data()
     key = f"{spot_id}_{hand}"
@@ -160,15 +159,14 @@ def parse_range_to_list(range_str):
             else: hand_list.extend([h+'s', h+'o'])
     return list(set(hand_list))
 
-# --- ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ПОЗИЦИОНИРОВАНИЯ ФИШЕК ---
-# Индекс 0=Hero, 1=pos-1, 2=pos-2...
 def get_chip_style(seat_index):
-    if seat_index == 0: return "bottom: 22%; left: 47%;" # Hero
-    if seat_index == 1: return "bottom: 25%; left: 22%;" # Pos 1 (BL)
-    if seat_index == 2: return "top: 25%; left: 22%;"    # Pos 2 (TL)
-    if seat_index == 3: return "top: 12%; left: 47%;"    # Pos 3 (TC)
-    if seat_index == 4: return "top: 25%; right: 22%;"   # Pos 4 (TR)
-    if seat_index == 5: return "bottom: 25%; right: 22%;"# Pos 5 (BR)
+    # 0=Hero, 1=pos-1 (BL), 2=pos-2 (TL), 3=pos-3 (TC), 4=pos-4 (TR), 5=pos-5 (BR)
+    if seat_index == 0: return "bottom: 22%; left: 47%;"
+    if seat_index == 1: return "bottom: 25%; left: 22%;"
+    if seat_index == 2: return "top: 25%; left: 22%;"
+    if seat_index == 3: return "top: 12%; left: 47%;"
+    if seat_index == 4: return "top: 25%; right: 22%;"
+    if seat_index == 5: return "bottom: 25%; right: 22%;"
     return ""
 
 # --- ТАБЫ ---
@@ -204,7 +202,9 @@ with tab_trainer:
     if st.session_state.hand is None:
         if train_mode == "Manual": st.session_state.active_spot = selected_spot
         else: st.session_state.active_spot = random.choice(target_spots)
-        if st.session_state.active_spot not in ranges_db[cat][sub]: st.session_state.active_spot = list(ranges_db[cat][sub].keys())[0]
+        
+        if st.session_state.active_spot not in ranges_db[cat][sub]:
+            st.session_state.active_spot = list(ranges_db[cat][sub].keys())[0]
 
         spot_id = st.session_state.active_spot
         data = ranges_db[cat][sub][spot_id]
@@ -212,9 +212,11 @@ with tab_trainer:
         train_r = data.get("training", full_r) if isinstance(data, dict) else str(data)
         poss = parse_range_to_list(train_r)
         if not poss: poss = all_hands
+        
         srs = load_srs_data()
         srs_k = f"{cat}_{sub}_{spot_id}".replace(" ", "_")
         w = [srs.get(f"{srs_k}_{h}", 100) for h in poss]
+        
         st.session_state.hand = random.choices(poss, weights=w, k=1)[0]
         pool = ['♠', '♥', '♦', '♣']
         s1 = random.choice(pool)
@@ -242,9 +244,9 @@ with tab_trainer:
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
     html = '<div class="game-area"><div class="table-logo">GTO PRO</div>'
-    table_chips_html = "" # Контейнер для фишек на столе
+    table_chips_html = ""
 
-    # Генерация мест оппонентов
+    # Генерация мест
     for i in range(1, 6):
         pos_name = rotated_seats[i]
         std_idx_pos = order.index(pos_name)
@@ -255,31 +257,24 @@ with tab_trainer:
         cards_html = '<div class="opp-cards"><div class="opp-c1"></div><div class="opp-c2"></div></div>' if not is_folded else ""
         html += f"""<div class="seat pos-{i} {seat_cls}">{cards_html}<span class="seat-label">{pos_name}</span></div>"""
         
-        # Генерация фишек на столе для оппонентов
-        chip_style = get_chip_style(i)
-        if pos_name == "BTN":
-             table_chips_html += f'<div class="dealer-button" style="{chip_style}">D</div>'
-        elif pos_name == "SB":
-             table_chips_html += f'<div class="blind-stack" style="{chip_style}"><div class="poker-chip"></div></div>'
-        elif pos_name == "BB":
-             table_chips_html += f'<div class="blind-stack" style="{chip_style}"><div class="poker-chip"></div><div class="poker-chip chip-stacked"></div></div>'
+        # Фишки
+        style = get_chip_style(i)
+        if pos_name == "BTN": table_chips_html += f'<div class="dealer-button" style="{style}">D</div>'
+        elif pos_name == "SB": table_chips_html += f'<div class="blind-stack" style="{style}"><div class="poker-chip"></div></div>'
+        elif pos_name == "BB": table_chips_html += f'<div class="blind-stack" style="{style}"><div class="poker-chip"></div><div class="poker-chip chip-stacked"></div></div>'
 
-    # Генерация места Hero
+    # Hero
     hero_pos = rotated_seats[0]
-    html += f"""<div class="hero-panel"><div style="display:flex; flex-direction:column; align-items:center;"><span style="color:gold; font-weight:bold; font-size:12px;">HERO</span><span style="color:#777; font-size:10px;">{hero_pos}</span></div><div class="card"><div class="tl {c1}">{h_val[0]}<br>{s1}</div><div class="cent {c1}">{s1}</div></div><div class="card"><div class="tl {c2}">{h_val[1]}<br>{s2}</div><div class="cent {c2}">{s2}</div></div></div>"""
-    
-    # Генерация фишек на столе для Hero
-    hero_chip_style = get_chip_style(0)
-    if hero_pos == "BTN":
-         table_chips_html += f'<div class="dealer-button" style="{hero_chip_style}">D</div>'
-    elif hero_pos == "SB":
-         table_chips_html += f'<div class="blind-stack" style="{hero_chip_style}"><div class="poker-chip"></div></div>'
-    elif hero_pos == "BB":
-         table_chips_html += f'<div class="blind-stack" style="{hero_chip_style}"><div class="poker-chip"></div><div class="poker-chip chip-stacked"></div></div>'
+    hero_style = get_chip_style(0)
+    if hero_pos == "BTN": table_chips_html += f'<div class="dealer-button" style="{hero_style}">D</div>'
+    elif hero_pos == "SB": table_chips_html += f'<div class="blind-stack" style="{hero_style}"><div class="poker-chip"></div></div>'
+    elif hero_pos == "BB": table_chips_html += f'<div class="blind-stack" style="{hero_style}"><div class="poker-chip"></div><div class="poker-chip chip-stacked"></div></div>'
 
-    html += table_chips_html + "</div>" # Добавляем фишки и закрываем game-area
+    html += f"""<div class="hero-panel"><div style="display:flex; flex-direction:column; align-items:center;"><span style="color:gold; font-weight:bold; font-size:12px;">HERO</span><span style="color:#777; font-size:10px;">{hero_pos}</span></div><div class="card"><div class="tl {c1}">{h_val[0]}<br>{s1}</div><div class="cent {c1}">{s1}</div></div><div class="card"><div class="tl {c2}">{h_val[1]}<br>{s2}</div><div class="cent {c2}">{s2}</div></div></div>"""
+    html += table_chips_html + "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
+    # ДЕЙСТВИЯ
     spot_data = ranges_db[cat][sub][curr_spot]
     full_r = spot_data.get("full", "") if isinstance(spot_data, dict) else str(spot_data)
     ans_weight = get_weight(st.session_state.hand, full_r)
