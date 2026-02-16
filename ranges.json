@@ -1,0 +1,19 @@
+{
+  "Jayser": {
+    "1.1 Preflop Raise": {
+      "Open Raise EP": "AA,KK,QQ,JJ,TT,99,88,77,66,55:0.25,44:0.25,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s:0.5,KQ,KJ,KTs,K9s,K8s,QJs,QTs,Q9s,JTs,J9s:0.5,T9s,87s:0.25,76s:0.25,65s:0.25",
+      "Open Raise MP": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44:0.5,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,QJ,QTs,Q9s,Q8s:0.5,JTs,J9s,T9s,T8s:0.5,98s:0.5,87s:0.25,76s:0.25,65s:0.25,54s:0.25",
+      "Open Raise CO": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33:0.5,22:0.5,AK,AQ,AJ,AT,A9,A8s,A8o:0.5,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,K6s,K5s,K4s,K3s:0.5,QJ,QT,Q9s,Q8s,Q7s,Q6s,JT,J9s,J8s,J7s:0.5,T9s,T8s,T7s:0.5,98s,97s,87s,86s,76s:0.5,65s:0.5,54s:0.5",
+      "Open Raise BU": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4,A3s,A3o:0.15,A2s,A2o:0.15,KQ,KJ,KT,K9,K8s,K8o:0.15,K7s,K6s,K5s,K4s,K3s,K2s,QJ,QT,Q9,Q8s,Q7s,Q6s,Q5s,Q4s:0.3,Q3s:0.3,Q2s:0.15,JT,J9,J8s,J8o:0.15,J7s,J6s,J5s:0.3,J4s:0.15,T9,T8s,T8o:0.3,T7s,T6s,98s,98o:0.3,97s,96s,87s,87o:0.1,86s,85s,76s,75s,65s,64s,54s",
+      "Open Raise SB": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4s,A4o:0.5,A3s,A2s,KQ,KJ,KT,K9,K8s,K8o:0.5,K7s,K6s,K5s,K4s,K3s,K2s,QJ,QT,Q9,Q8s,Q7s,Q6s,Q5s,Q4s,Q3s,Q2s:0.5,JT,J9,J8s,J7s,J6s,J5s,J4s:0.5,T9,T8s,T8o:0.5,T7s,T6s,98,97s,96s,87s,87o:0.5,86s,85s,76s,75s,74s:0.5,65s,64s,54s,53s"
+    },
+    "1.2 Cold Call": {
+        "Пример пустого раздела": "" 
+    }
+  },
+  "GTOWizard": {
+    "General": {
+       "Пример": "AA,KK"
+    }
+  }
+}
