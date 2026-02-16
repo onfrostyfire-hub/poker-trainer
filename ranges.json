@@ -1,28 +1,19 @@
 {
-  "Custom Training": {
-    "Boundary Defense": {
-      "EP (UTG)": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s:0.5,KQ,KJ,KTs,K9s,K8s,QJs,QTs,Q9s,JTs,J9s,T9s",
-        "training": "66,55,44,33,22,ATo,A7s,A6s,A3s,A2s,KJo,KTo,K9s,K8s,K7s,K6s,QJo,QTo,Q9s,Q8s,Q7s,JTo,J9s,J8s,T9s,T8s,T7s,98s,97s,87s,86s,76s,75s,65s,54s"
-      },
-      "MP": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,QJ,QTs,Q9s,JTs,J9s,T9s,T8s,98s",
-        "training": "55,44,33,22,ATo,A9o,A3s,A2s,KJo,KTo,K9s,K8s,K7s,K6s,K5s,QJo,QTo,Q9s,Q8s,Q7s,JTo,J9s,J8s,T9s,T8s,T7s,98s,97s,87s,86s,76s,75s,65s,64s,54s"
-      },
-      "CO": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,K6s,K5s,K4s,QJ,QT,Q9s,Q8s,Q7s,Q6s,JT,J9s,J8s,T9s,T8s,98s,97s,87s,86s,76s,65s,54s",
-        "training": "33,22,A9o,A8o,A7o,K9o,K7s,K6s,K5s,K4s,K3s,K2s,QTo,Q9o,Q7s,Q6s,Q5s,Q4s,Q3s,Q2s,JTo,J9o,J7s,J6s,T9o,T7s,T6s,96s,95s,86s,85s,75s,74s,64s,63s,53s,43s,42s,32s"
-      },
-      "BTN": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4,A3s,A2s,KQ,KJ,KT,K9,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJ,QT,Q9,Q8s,Q7s,Q6s,Q5s,JT,J9,J8s,J7s,J6s,T9,T8s,T7s,T6s,98s,97s,96s,87s,86s,85s,76s,75s,65s,64s,54s",
-        "training": "A5o,A4o,A3o,A2o,K9o,K8o,K7o,K3s,K2s,Q9o,Q8o,Q6s,Q5s,Q4s,Q3s,Q2s,J9o,J8o,J6s,J5s,J4s,J3s,T9o,T8o,T6s,T5s,T4s,98o,96s,95s,94s,87o,85s,84s,74s,73s,64s,63s,53s,52s,43s,42s,32s"
-      },
-      "SB": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4s,A3s,A2s,KQ,KJ,KT,K9,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJ,QT,Q9,Q8s,Q7s,Q6s,Q5s,Q4s,Q3s,JT,J9,J8s,J7s,J6s,J5s,T9,T8s,T7s,T6s,98,97s,96s,87s,86s,85s,76s,75s,65s,64s,54s,53s",
-        "training": "22,A7o,A6o,A5o,A4o,A3o,A2o,K9o,K8o,K7o,K5s,K4s,K3s,K2s,Q9o,Q8o,Q6s,Q5s,Q4s,Q3s,Q2s,J9o,J8o,J6s,J5s,J4s,J3s,J2s,T9o,T8o,T6s,T5s,T4s,T3s,98o,97o,96s,95s,94s,87o,85s,84s,83s,76o,73s,63s,53s,52s,42s,32s"
-      }
+  "Jayser": {
+    "Open Raise": {
+      "EP": { "full": "AA,KK,QQ...", "training": "A2s,K9s..." },
+      "MP": { "full": "...", "training": "..." },
+      "CO": { "full": "...", "training": "..." },
+      "BTN": { "full": "...", "training": "..." },
+      "SB": { "full": "...", "training": "..." }
+    },
+    "vs 3-Bet": {
+      "BTN vs SB": { "full": "...", "training": "..." }
+    }
+  },
+  "GTOWizard": {
+    "Open Raise": {
+      "EP": { "full": "AA,KK...", "training": "..." }
     }
   }
 }
-
-
