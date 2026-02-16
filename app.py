@@ -1,8 +1,9 @@
 import streamlit as st
 import json
 import random
+import textwrap
 
-# --- ВЕРСИЯ 5.0 (REAL POSITIONS) ---
+# --- ВЕРСИЯ 6.0 (FIXED INDENTATION ISSUE) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -46,32 +47,17 @@ st.markdown("""
         box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
     
-    /* Текст позиции (EP, MP...) */
-    .seat-label {
-        color: #ddd;
-        font-weight: bold;
-        font-size: 14px;
-    }
+    .seat-label { color: #ddd; font-weight: bold; font-size: 14px; }
+    .seat-sub { color: #777; font-size: 9px; }
     
-    /* Текст стека/имени (мелко) */
-    .seat-sub {
-        color: #777;
-        font-size: 9px;
-    }
+    /* КООРДИНАТЫ (6-max) */
+    .seat-5 { bottom: 15%; left: 5%; } /* SB */
+    .seat-1 { top: 15%; left: 10%; }   /* BB */
+    .seat-2 { top: -15px; left: 50%; transform: translateX(-50%); } /* EP */
+    .seat-3 { top: 15%; right: 10%; }  /* MP */
+    .seat-4 { bottom: 15%; right: 5%; } /* CO */
     
-    /* КООРДИНАТЫ МЕСТ (6-max) */
-    /* 5 - Слева снизу (SB) */
-    .seat-5 { bottom: 15%; left: 5%; }
-    /* 1 - Слева сверху (BB) */
-    .seat-1 { top: 15%; left: 10%; }
-    /* 2 - Сверху центр/справа (EP) */
-    .seat-2 { top: -15px; left: 50%; transform: translateX(-50%); } 
-    /* 3 - Справа сверху (MP) */
-    .seat-3 { top: 15%; right: 10%; }
-    /* 4 - Справа снизу (CO) */
-    .seat-4 { bottom: 15%; right: 5%; }
-    
-    /* ПАНЕЛЬ ХИРО (BTN) */
+    /* ПАНЕЛЬ ХИРО */
     .hero-panel {
         position: absolute;
         bottom: -45px; left: 50%;
@@ -98,9 +84,8 @@ st.markdown("""
     
     /* КНОПКИ */
     div.stButton > button { width: 100%; height: 60px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; }
-    div[data-testid="column"]:nth-of-type(1) div.stButton > button { background: #b71c1c; color: white; box-shadow: 0 4px 0 #7f0000; }
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button { background: #2e7d32; color: white; box-shadow: 0 4px 0 #1b5e20; }
-    div.stButton > button:active { box-shadow: none; transform: translateY(4px); }
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button { background: #b71c1c; color: white; }
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button { background: #2e7d32; color: white; }
 
 </style>
 """, unsafe_allow_html=True)
@@ -136,7 +121,7 @@ with st.sidebar:
         st.session_state.stats = {'correct': 0, 'total': 0}
         st.rerun()
 
-# --- ЗАГОЛОВОК СПОТА ---
+# --- ЗАГОЛОВОК ---
 st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
 
 # --- СОСТОЯНИЕ ---
@@ -144,7 +129,7 @@ if 'hand' not in st.session_state: st.session_state.hand = random.choice(all_han
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# --- ПОЛУЧЕНИЕ ВЕСА ---
+# --- ВЕСА ---
 def get_weight(hand, range_str):
     if not range_str: return 0.0
     items = [x.strip() for x in range_str.split(',')]
@@ -157,7 +142,7 @@ def get_weight(hand, range_str):
 
 weight = get_weight(st.session_state.hand, ranges_db[cat][sub][spot])
 
-# --- ГЕНЕРАЦИЯ ВИЗУАЛА ---
+# --- ОТРИСОВКА ---
 h = st.session_state.hand
 r1, r2 = h[0], h[1]
 suits = ['♠', '♥', '♦', '♣']; s1 = random.choice(suits)
@@ -165,28 +150,30 @@ s2 = s1 if 's' in h else random.choice([x for x in suits if x != s1])
 c1 = "red" if s1 in ['♥','♦'] else "black"
 c2 = "red" if s2 in ['♥','♦'] else "black"
 
-# HTML СТОЛА С ПОЗИЦИЯМИ
-html = f"""
-<div class="game-area">
-    <div class="table-logo">GTO TRAINER</div>
-    
-    <div class="seat seat-5"><span class="seat-label">SB</span><span class="seat-sub">Fold</span></div>
-    <div class="seat seat-1"><span class="seat-label">BB</span><span class="seat-sub">Fold</span></div>
-    <div class="seat seat-2"><span class="seat-label">EP</span><span class="seat-sub">Fold</span></div>
-    <div class="seat seat-3"><span class="seat-label">MP</span><span class="seat-sub">Fold</span></div>
-    <div class="seat seat-4"><span class="seat-label">CO</span><span class="seat-sub">Fold</span></div>
-    
-    <div class="hero-panel">
-        <div style="display:flex; flex-direction:column; align-items:center; margin-right:5px;">
-            <span style="color:gold; font-weight:bold; font-size:12px;">HERO</span>
-            <span style="color:#555; font-size:10px;">BTN</span>
+# ГЕНЕРАЦИЯ HTML ЧЕРЕЗ TEXTWRAP (ЧТОБЫ НЕ БЫЛО КОДА НА ЭКРАНЕ)
+html_template = f"""
+    <div class="game-area">
+        <div class="table-logo">GTO TRAINER</div>
+        
+        <div class="seat seat-5"><span class="seat-label">SB</span><span class="seat-sub">Fold</span></div>
+        <div class="seat seat-1"><span class="seat-label">BB</span><span class="seat-sub">Fold</span></div>
+        <div class="seat seat-2"><span class="seat-label">EP</span><span class="seat-sub">Fold</span></div>
+        <div class="seat seat-3"><span class="seat-label">MP</span><span class="seat-sub">Fold</span></div>
+        <div class="seat seat-4"><span class="seat-label">CO</span><span class="seat-sub">Fold</span></div>
+        
+        <div class="hero-panel">
+            <div style="display:flex; flex-direction:column; align-items:center; margin-right:5px;">
+                <span style="color:gold; font-weight:bold; font-size:12px;">HERO</span>
+                <span style="color:#555; font-size:10px;">BTN</span>
+            </div>
+            <div class="card"><div class="tl {c1}">{r1}<br>{s1}</div><div class="cent {c1}">{s1}</div></div>
+            <div class="card"><div class="tl {c2}">{r2}<br>{s2}</div><div class="cent {c2}">{s2}</div></div>
         </div>
-        <div class="card"><div class="tl {c1}">{r1}<br>{s1}</div><div class="cent {c1}">{s1}</div></div>
-        <div class="card"><div class="tl {c2}">{r2}<br>{s2}</div><div class="cent {c2}">{s2}</div></div>
     </div>
-</div>
 """
-st.markdown(html, unsafe_allow_html=True)
+
+# Вот эта функция лечит проблему с "видимым кодом":
+st.markdown(textwrap.dedent(html_template), unsafe_allow_html=True)
 
 # --- КНОПКИ ---
 c1, c2 = st.columns(2, gap="small")
@@ -210,5 +197,4 @@ else:
     if st.button("Next Hand ➡️"):
         st.session_state.hand = random.choice(all_hands); st.session_state.msg = None; st.rerun()
 
-# --- СТАТИСТИКА ---
 st.markdown(f"<div style='text-align:center; color:#666; font-family:monospace;'>Session: {st.session_state.stats['correct']}/{st.session_state.stats['total']}</div>", unsafe_allow_html=True)
