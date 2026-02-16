@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 21.0 (MOBILE UI, LIVE TABLE, PERSISTENT STATS) ---
+# --- ВЕРСИЯ 21.1 (SYNTAX FIX & MOBILE UI) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -23,20 +23,20 @@ st.markdown("""
     }
     .table-logo { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.08); font-weight: bold; font-size: 28px; pointer-events: none; }
     
-    /* МЕСТА И КАРТЫ ОППОНЕНТОВ */
+    /* МЕСТА */
     .seat { 
         position: absolute; width: 65px; height: 65px; 
         background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; 
         display: flex; flex-direction: column; justify-content: center; align-items: center; 
         box-shadow: 0 5px 10px rgba(0,0,0,0.5); z-index: 5; 
     }
-    .seat-active { border-color: #ffd700; background: rgba(20,20,20,0.95); } /* Активный игрок */
-    .seat-folded { opacity: 0.5; border-color: #333; } /* Сфолдил */
+    .seat-active { border-color: #ffd700; background: rgba(20,20,20,0.95); }
+    .seat-folded { opacity: 0.5; border-color: #333; }
     
     .seat-label { color: #fff; font-weight: bold; font-size: 14px; }
     .seat-sub { color: #888; font-size: 10px; }
     
-    /* Рубашки карт оппонентов */
+    /* РУБАШКИ КАРТ */
     .opp-cards { position: absolute; top: -15px; width: 30px; height: 40px; background: #fff; border-radius: 3px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); box-shadow: 2px 2px 5px rgba(0,0,0,0.5); z-index: 4; }
     .opp-c1 { transform: rotate(-10deg); left: 10px; }
     .opp-c2 { transform: rotate(10deg); left: 25px; }
@@ -46,14 +46,14 @@ st.markdown("""
     .sb-chip { background: #ffd700; border: 1px solid #e6c200; }
     .bb-chip { background: #ff5722; border: 1px solid #e64a19; }
     
-    /* РАССТАНОВКА (Чуть шире из-за стола) */
+    /* ПОЗИЦИИ */
     .pos-1 { bottom: 20%; left: 6%; } 
     .pos-2 { top: 20%; left: 6%; } 
     .pos-3 { top: -25px; left: 50%; transform: translateX(-50%); } 
     .pos-4 { top: 20%; right: 6%; } 
     .pos-5 { bottom: 20%; right: 6%; }
     
-    /* ХИРО */
+    /* HERO */
     .hero-panel { position: absolute; bottom: -50px; left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 3px solid #ffd700; border-radius: 16px; padding: 8px 20px; display: flex; gap: 10px; box-shadow: 0 0 25px rgba(255,215,0,0.25); z-index: 10; align-items: center; }
     .card { width: 55px; height: 80px; background: white; border-radius: 5px; position: relative; color: black; font-family: 'Arial', sans-serif; }
     .tl { position: absolute; top: 2px; left: 4px; font-weight: bold; font-size: 18px; line-height: 1.1; }
@@ -63,11 +63,11 @@ st.markdown("""
     /* MOBILE-FIRST КНОПКИ (В РЯД) */
     div[data-testid="column"] { width: 50% !important; flex: 1 1 50% !important; min-width: 50% !important; }
     
-    /* Стилизация кнопок Fold/Raise */
+    /* Стили кнопок */
     div.stButton > button { width: 100%; height: 75px; font-size: 22px; font-weight: 800; border-radius: 14px; border: none; text-transform: uppercase; letter-spacing: 1px; transition: transform 0.1s; }
     div.stButton > button:active { transform: scale(0.96); }
     
-    /* Цвета кнопок */
+    /* Цвета */
     div[data-testid="column"]:nth-of-type(1) div.stButton > button { 
         background-color: #c62828 !important; color: white !important; 
         box-shadow: 0 6px 0 #8e0000; margin-bottom: 6px;
@@ -85,19 +85,21 @@ HISTORY_FILE = 'history_log.csv'
 SRS_FILE = 'srs_data.json'
 RANGES_FILE = 'ranges.json'
 
-# --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ ---
+# --- ИНИЦИАЛИЗАЦИЯ ---
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
-        with open(RANGES_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return {}
+        with open(RANGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
 
 ranges_db = load_ranges()
 
-# --- ФУНКЦИИ ИСТОРИИ (CSV) ---
+# --- ФУНКЦИИ ИСТОРИИ ---
 def save_to_history(record):
     df_new = pd.DataFrame([record])
     if not os.path.exists(HISTORY_FILE):
@@ -113,12 +115,16 @@ def load_history():
 # --- SRS ЛОГИКА ---
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
-    with open(SRS_FILE, 'w') as f: json.dump(data, f)
+    with open(SRS_FILE, 'w') as f:
+        json.dump(data, f)
 
 def update_srs_smart(spot_id, hand, rating):
     data = load_srs_data()
@@ -154,19 +160,23 @@ def parse_range_to_list(range_str):
             else: hand_list.extend([h+'s', h+'o'])
     return list(set(hand_list))
 
-# --- ВКЛАДКИ (TABS) ---
+# --- ВКЛАДКИ ---
 tab_trainer, tab_stats = st.tabs(["🎮 Trainer", "📈 Statistics"])
 
 # ==========================================
 # ВКЛАДКА 1: ТРЕНАЖЕР
 # ==========================================
 with tab_trainer:
-    # --- НАСТРОЙКИ (Сверху) ---
+    # --- НАСТРОЙКИ ---
     with st.expander("⚙️ Settings", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
-            cat = st.selectbox("Category", list(ranges_db.keys()))
-            sub = st.selectbox("Section", list(ranges_db[cat].keys()))
+            if ranges_db:
+                cat = st.selectbox("Category", list(ranges_db.keys()))
+                sub = st.selectbox("Section", list(ranges_db[cat].keys()))
+            else:
+                st.error("No ranges loaded.")
+                st.stop()
         with c2:
             train_mode = st.radio("Mode", ["Manual", "Early (EP/MP)", "Late (CO/BU/SB)"], horizontal=True)
 
@@ -187,14 +197,14 @@ with tab_trainer:
             if os.path.exists(SRS_FILE): os.remove(SRS_FILE)
             st.toast("Memory wiped!")
 
-    # --- СОСТОЯНИЕ ИГРЫ ---
+    # --- СОСТОЯНИЕ ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'active_spot' not in st.session_state: st.session_state.active_spot = None
     if 'suits' not in st.session_state: st.session_state.suits = None
     if 'msg' not in st.session_state: st.session_state.msg = None
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
 
-    # --- ЛОГИКА НОВОЙ РАЗДАЧИ ---
+    # --- ЛОГИКА РАЗДАЧИ ---
     if st.session_state.hand is None:
         if train_mode == "Manual": st.session_state.active_spot = selected_spot
         else: st.session_state.active_spot = random.choice(target_spots)
@@ -223,11 +233,10 @@ with tab_trainer:
         st.session_state.suits = [s1, s2]
         st.session_state.srs_mode = False
 
-    # --- ОТРИСОВКА СТОЛА ---
+    # --- ОТРИСОВКА ---
     curr_spot = st.session_state.active_spot
     st.markdown(f"<h3 style='text-align:center; color:#888; margin-bottom:10px;'>{curr_spot}</h3>", unsafe_allow_html=True)
     
-    # Определение позиций
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0
     u = curr_spot.upper()
@@ -238,13 +247,8 @@ with tab_trainer:
     elif "SB" in u: hero_idx = 4
     elif "BB" in u: hero_idx = 5
     
-    # Вращаем стол так, чтобы Hero был внизу (индекс 0 в seats)
-    # Но нам нужно знать, кто сфолдил.
-    # В RFI (Open Raise) все ДО Хиро сфолдили.
-    
     rotated_seats = order[hero_idx:] + order[:hero_idx]
     
-    # HTML генерация
     h_val = st.session_state.hand
     s1, s2 = st.session_state.suits
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
@@ -252,70 +256,45 @@ with tab_trainer:
 
     html = '<div class="game-area"><div class="table-logo">GTO PRO</div>'
     
-    # Оппоненты (индексы 1-5 в rotated_seats)
     for i in range(1, 6):
         pos_name = rotated_seats[i]
-        
-        # ЛОГИКА СТАТУСА:
-        # Стандартный порядок: EP -> MP -> CO -> BTN -> SB -> BB
-        # Индекс позиции в стандартном порядке
         std_idx_pos = order.index(pos_name)
         std_idx_hero = order.index(rotated_seats[0])
         
         is_folded = False
         has_cards = False
         
-        # Если Хиро на ББ, то это не опенрейз, но допустим.
-        # Обычно: Все ДО хиро - фолд. Все ПОСЛЕ хиро - активны.
         if std_idx_pos < std_idx_hero:
-            is_folded = True
-            status_text = "Fold"
+            is_folded = True; status_text = "Fold"
         else:
-            has_cards = True
-            status_text = "Wait"
+            has_cards = True; status_text = "Wait"
 
-        # Исключения для блинов, если Хиро на SB
         if rotated_seats[0] == "SB" and pos_name == "BB": has_cards = True; is_folded = False
         
-        # Стили
         seat_cls = "seat-folded" if is_folded else "seat-active"
         cards_html = '<div class="opp-cards"><div class="opp-c1"></div><div class="opp-c2"></div></div>' if has_cards else ""
         
-        # Фишки блайндов
         chip_html = ""
         if pos_name == "SB": chip_html = '<div class="chip sb-chip" style="top:-10px; right:-10px;">SB</div>'
         if pos_name == "BB": chip_html = '<div class="chip bb-chip" style="top:-10px; right:-10px;">BB</div>'
 
-        html += f"""
-        <div class="seat pos-{i} {seat_cls}">
-            {cards_html}
-            {chip_html}
-            <span class="seat-label">{pos_name}</span>
-            <span class="seat-sub">{status_text}</span>
-        </div>
-        """
+        html += f"""<div class="seat pos-{i} {seat_cls}">{cards_html}{chip_html}<span class="seat-label">{pos_name}</span><span class="seat-sub">{status_text}</span></div>"""
 
-    # Hero
     hero_pos = rotated_seats[0]
     hero_chip = ""
     if hero_pos == "SB": hero_chip = '<div class="chip sb-chip" style="top:-15px; right:-10px;">SB</div>'
     if hero_pos == "BB": hero_chip = '<div class="chip bb-chip" style="top:-15px; right:-10px;">BB</div>'
 
     html += f"""
-    <div class="hero-panel">
-        {hero_chip}
-        <div style="display:flex; flex-direction:column; align-items:center;">
-            <span style="color:gold; font-weight:bold; font-size:12px;">HERO</span>
-            <span style="color:#777; font-size:10px;">{hero_pos}</span>
-        </div>
+    <div class="hero-panel">{hero_chip}
+        <div style="display:flex; flex-direction:column; align-items:center;"><span style="color:gold; font-weight:bold; font-size:12px;">HERO</span><span style="color:#777; font-size:10px;">{hero_pos}</span></div>
         <div class="card"><div class="tl {c1}">{h_val[0]}<br>{s1}</div><div class="cent {c1}">{s1}</div></div>
         <div class="card"><div class="tl {c2}">{h_val[1]}<br>{s2}</div><div class="cent {c2}">{s2}</div></div>
-    </div>
-    </div>
+    </div></div>
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # --- КНОПКИ ДЕЙСТВИЙ ---
+    # --- КНОПКИ ---
     spot_data = ranges_db[cat][sub][curr_spot]
     full_r = spot_data.get("full", "") if isinstance(spot_data, dict) else str(spot_data)
     ans_weight = get_weight(st.session_state.hand, full_r)
@@ -326,41 +305,24 @@ with tab_trainer:
         with c1:
             if st.button("FOLD"):
                 is_correct = (ans_weight == 0.0)
-                res_txt = "✅ Correct!" if is_correct else f"❌ Error! Raise {int(ans_weight*100)}%"
-                st.session_state.msg = res_txt
-                
-                # Сохраняем в историю
-                rec = {
+                st.session_state.msg = "✅ Correct!" if is_correct else f"❌ Error! Raise {int(ans_weight*100)}%"
+                save_to_history({
                     "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Spot": curr_spot,
-                    "Hand": st.session_state.hand,
-                    "Result": 1 if is_correct else 0,
-                    "CorrectAction": "Fold" if ans_weight == 0 else "Raise"
-                }
-                save_to_history(rec)
-                
-                st.session_state.srs_mode = True
-                st.rerun()
+                    "Spot": curr_spot, "Hand": st.session_state.hand,
+                    "Result": 1 if is_correct else 0, "CorrectAction": "Fold" if ans_weight == 0 else "Raise"
+                })
+                st.session_state.srs_mode = True; st.rerun()
         with c2:
             if st.button("RAISE"):
                 is_correct = (ans_weight > 0.0)
-                res_txt = f"✅ Correct! ({int(ans_weight*100)}%)" if is_correct else "❌ Error! Fold"
-                st.session_state.msg = res_txt
-                
-                rec = {
+                st.session_state.msg = f"✅ Correct! ({int(ans_weight*100)}%)" if is_correct else "❌ Error! Fold"
+                save_to_history({
                     "Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                    "Spot": curr_spot,
-                    "Hand": st.session_state.hand,
-                    "Result": 1 if is_correct else 0,
-                    "CorrectAction": "Raise" if ans_weight > 0 else "Fold"
-                }
-                save_to_history(rec)
-                
-                st.session_state.srs_mode = True
-                st.rerun()
-
+                    "Spot": curr_spot, "Hand": st.session_state.hand,
+                    "Result": 1 if is_correct else 0, "CorrectAction": "Raise" if ans_weight > 0 else "Fold"
+                })
+                st.session_state.srs_mode = True; st.rerun()
     else:
-        # SRS ОЦЕНКА
         if "✅" in st.session_state.msg: st.success(st.session_state.msg)
         else: st.error(st.session_state.msg)
         
@@ -378,29 +340,19 @@ with tab_trainer:
 # ==========================================
 with tab_stats:
     st.header("📊 Statistics Dashboard")
-    
     df = load_history()
-    
     if df.empty:
         st.info("No stats yet. Play some hands!")
     else:
-        # Конвертация даты
         df["Date"] = pd.to_datetime(df["Date"])
-        
-        # Фильтры времени
         time_filter = st.selectbox("Period", ["Today", "Last 7 Days", "Last 30 Days", "All Time"])
-        
         now = datetime.now()
-        if time_filter == "Today":
-            df_filtered = df[df["Date"].dt.date == now.date()]
-        elif time_filter == "Last 7 Days":
-            df_filtered = df[df["Date"] >= (now - timedelta(days=7))]
-        elif time_filter == "Last 30 Days":
-            df_filtered = df[df["Date"] >= (now - timedelta(days=30))]
-        else:
-            df_filtered = df
+        
+        if time_filter == "Today": df_filtered = df[df["Date"].dt.date == now.date()]
+        elif time_filter == "Last 7 Days": df_filtered = df[df["Date"] >= (now - timedelta(days=7))]
+        elif time_filter == "Last 30 Days": df_filtered = df[df["Date"] >= (now - timedelta(days=30))]
+        else: df_filtered = df
             
-        # Метрики
         total_hands = len(df_filtered)
         if total_hands > 0:
             correct_hands = df_filtered["Result"].sum()
@@ -411,15 +363,12 @@ with tab_stats:
             c2.metric("Accuracy", f"{accuracy}%")
             c3.metric("Errors", total_hands - correct_hands)
             
-            # График по позициям
             st.subheader("Performance by Spot")
             spot_stats = df_filtered.groupby("Spot")["Result"].mean() * 100
             st.bar_chart(spot_stats)
             
-            # Детальная таблица
             st.subheader("Recent Errors")
             errors_df = df_filtered[df_filtered["Result"] == 0].sort_values("Date", ascending=False).head(10)
             st.dataframe(errors_df[["Date", "Spot", "Hand", "CorrectAction"]], hide_index=True, use_container_width=True)
-            
         else:
             st.warning("No data for this period.")
