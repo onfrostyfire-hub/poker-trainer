@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 26.0 (MATRIX HIGHLIGHT & VISUAL FEEDBACK) ---
+# --- ВЕРСИЯ 26.1 (SYNTAX FIX & MATRIX HIGHLIGHT) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -86,32 +86,41 @@ RANGES_FILE = 'ranges.json'
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
-# --- ЗАГРУЗЧИКИ ---
+# --- ЗАГРУЗЧИКИ (ИСПРАВЛЕННЫЕ) ---
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
-        with open(RANGES_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return {}
+        with open(RANGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
 
 ranges_db = load_ranges()
 
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
-    with open(SRS_FILE, 'w') as f: json.dump(data, f)
+    with open(SRS_FILE, 'w') as f:
+        json.dump(data, f)
 
 def load_history():
-    if os.path.exists(HISTORY_FILE): return pd.read_csv(HISTORY_FILE)
+    if os.path.exists(HISTORY_FILE):
+        return pd.read_csv(HISTORY_FILE)
     return pd.DataFrame(columns=["Date", "Spot", "Hand", "Result", "CorrectAction"])
 
 def save_to_history(record):
     df_new = pd.DataFrame([record])
-    if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
-    else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+    if not os.path.exists(HISTORY_FILE):
+        df_new.to_csv(HISTORY_FILE, index=False)
+    else:
+        df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
 # --- ЛОГИКА ---
 def update_srs_smart(spot_id, hand, rating):
