@@ -5,20 +5,25 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 29.0 (FIXED LAYOUT, COLORED HISTORY, EMBEDDED INFO) ---
+# --- ВЕРСИЯ 30.0 (LAYOUT FIX: MORE TOP PADDING) ---
 st.set_page_config(page_title="GTO Pro", page_icon="♠️", layout="wide")
 
 # --- CSS СТИЛИ ---
 st.markdown("""
 <style>
     .stApp { background-color: #212529; color: #e9ecef; }
-    .block-container { padding-top: 1rem; padding-bottom: 2rem; }
+    
+    /* === ГЛАВНЫЙ ФИКС: ОПУСКАЕМ ВСЁ ВНИЗ === */
+    .block-container { 
+        padding-top: 6rem !important; /* Было 1rem, стало 6rem (~90px) */
+        padding-bottom: 3rem !important; 
+    }
 
     /* === СТОЛ (RACETRACK) === */
     .game-area { 
         position: relative; 
         width: 100%; max-width: 600px; height: 340px; 
-        margin: 0 auto 20px auto; 
+        margin: 20px auto 20px auto; /* Добавил отступ сверху */
         background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%); 
         border: 15px solid #4a1c1c; 
         border-radius: 170px; 
@@ -27,7 +32,7 @@ st.markdown("""
     
     /* ИНФО О СПОТЕ (ВНУТРИ СТОЛА) */
     .table-info {
-        position: absolute; top: 15%; left: 50%; transform: translateX(-50%);
+        position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
         text-align: center; pointer-events: none; z-index: 2;
     }
     .info-src { font-size: 10px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 1px; }
@@ -179,6 +184,7 @@ def parse_range_to_list(range_str):
     return list(set(hand_list))
 
 def get_chip_style(seat_index):
+    # Адаптировано под овальный стол
     if seat_index == 0: return "bottom: 25%; left: 48%;"
     if seat_index == 1: return "bottom: 28%; left: 25%;"
     if seat_index == 2: return "top: 28%; left: 25%;"
@@ -195,24 +201,23 @@ def render_range_matrix(range_str, target_hand=None):
             if ranks_seq.index(r1) == ranks_seq.index(r2): hand = r1 + r2
             elif ranks_seq.index(r1) < ranks_seq.index(r2): hand = r1 + r2 + 's'
             else: hand = r2 + r1 + 'o'
+            
             w = get_weight(hand, range_str)
-            css = "grid-cell"
-            if target_hand and hand == target_hand: css += " current-hand-highlight"
+            css_class = "grid-cell"
+            if target_hand and hand == target_hand: css_class += " current-hand-highlight"
+            
             if w > 0:
-                op = 0.4 + (0.6 * w)
-                bg = f"rgba(102, 16, 242, {op})" if w < 1 else f"rgba(40, 167, 69, {op})"
+                opacity = 0.4 + (0.6 * w)
+                bg = f"rgba(102, 16, 242, {opacity})" if w < 1 else f"rgba(40, 167, 69, {opacity})"
                 style = f"background: {bg}; color: #fff;"
-            else: style = "background: #2c3034; color: #495057;"
-            html += f'<div class="{css}" style="{style}">{hand}</div>'
+            else:
+                style = "background: #2c3034; color: #495057;"
+            html += f'<div class="{css_class}" style="{style}">{hand}</div>'
     return html + '</div>'
 
 # Форматирование руки с цветами (AhKs -> Colored HTML)
 def format_hand_colored(hand_str):
-    # Если рука старого формата (AKo), просто возвращаем текст
-    if "♠" not in hand_str and "♥" not in hand_str:
-        return hand_str
-    
-    # Заменяем символы на цветные спаны
+    if "♠" not in hand_str and "♥" not in hand_str: return hand_str
     h = hand_str
     h = h.replace('♠', '<span class="h-s">♠</span>')
     h = h.replace('♥', '<span class="h-h">♥</span>')
@@ -223,7 +228,8 @@ def format_hand_colored(hand_str):
 # --- САЙДБАР ---
 with st.sidebar:
     st.header("Settings")
-    if not ranges_db: st.error("No ranges."); st.stop()
+    if not ranges_db: st.error("No ranges found."); st.stop()
+    
     saved = load_user_settings()
     
     # 1. Source
@@ -333,13 +339,11 @@ with col_left:
         if not errs.empty:
             st.markdown("**Recent Errors:**")
             for i, r in errs.iterrows():
-                # Красим масти
                 h_fmt = format_hand_colored(r['Hand'])
                 st.markdown(f"<div class='hist-row'>{h_fmt} <span class='hist-spot'>{r['Spot']}</span></div>", unsafe_allow_html=True)
 
 # --- CENTER (TABLE) ---
 with col_center:
-    # Отрисовка стола
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0
     u = sp.upper()
@@ -353,7 +357,6 @@ with col_center:
     rot = order[hero_idx:] + order[:hero_idx]
     
     html = '<div class="game-area">'
-    # INFO INSIDE TABLE
     html += f'<div class="table-info"><div class="info-src">{src} • {sc}</div><div class="info-spot">{sp}</div></div>'
     
     chips_html = ""
@@ -388,7 +391,6 @@ with col_center:
                 corr = (ans_w == 0.0)
                 st.session_state.last_error = not corr
                 st.session_state.msg = "✅ Correct" if corr else f"❌ Error (Raise {int(ans_w*100)}%)"
-                # Save exact hand with suits e.g. "A♠K♦"
                 hand_formatted = f"{h_val[0]}{s1}{h_val[1]}{s2}"
                 save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": hand_formatted, "Result": 1 if corr else 0, "CorrectAction": "Fold" if ans_w==0 else "Raise"})
                 st.session_state.srs_mode = True; st.rerun()
