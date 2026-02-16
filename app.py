@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 11.0 (FIXED SUITS & STRICT TRAINING) ---
+# --- ВЕРСИЯ 12.0 (CRASH FIX & LOGIC SEPARATION) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -48,22 +48,18 @@ def load_ranges():
 ranges_db = load_ranges()
 if not ranges_db: st.error("Файл ranges.json не найден!"); st.stop()
 
-# --- ПАРСЕР ДЛЯ ГЕНЕРАЦИИ ---
+# --- ПАРСЕРЫ ---
 def parse_range_to_list(range_str):
     if not range_str: return []
     hand_list = []
-    # Удаляем переносы строк и пробелы
     cleaned_str = range_str.replace('\n', '').replace('\r', '')
     items = [x.strip() for x in cleaned_str.split(',')]
-    
     for item in items:
         if not item: continue
-        hand_code = item.split(':')[0] # Убираем вес
-        
+        hand_code = item.split(':')[0]
         targets = []
         if hand_code in all_hands: targets.append(hand_code)
         else:
-            # AK -> AKs, AKo
             if len(hand_code) == 2 and hand_code[0] != hand_code[1]:
                 s, o = hand_code + 's', hand_code + 'o'
                 if s in all_hands: targets.append(s)
@@ -73,7 +69,6 @@ def parse_range_to_list(range_str):
         hand_list.extend(targets)
     return list(set(hand_list))
 
-# --- ПРОВЕРКА ОТВЕТА ---
 def get_weight(hand, range_str):
     if not range_str: return 0.0
     items = [x.strip() for x in range_str.replace('\n', '').split(',')]
@@ -102,30 +97,27 @@ if isinstance(spot_data, dict):
     full_range_str = spot_data.get("full", "")
     training_range_str = spot_data.get("training", full_range_str)
 else:
-    # Старый формат
     full_range_str = str(spot_data)
     training_range_str = str(spot_data)
 
 # --- СОСТОЯНИЕ (STATE) ---
-# Теперь храним не только руку, но и масти!
 if 'hand' not in st.session_state: st.session_state.hand = None
-if 'suits' not in st.session_state: st.session_state.suits = None # Исправляет баг смены мастей
+if 'suits' not in st.session_state: st.session_state.suits = None
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# --- ГЕНЕРАЦИЯ РУКИ И МАСТЕЙ ---
+# --- ШАГ 1: ГЕНЕРАЦИЯ РУКИ (Если нет) ---
 if st.session_state.hand is None:
-    # 1. Генерируем руку
     possible_hands = parse_range_to_list(training_range_str)
-    
-    # Если список пуст, выводим предупреждение (вместо рандомной руки)
     if not possible_hands:
-        st.error("Ошибка! Список тренировочных рук пуст. Проверь ranges.json (поле 'training').")
-        st.stop()
-        
+        possible_hands = all_hands # Фолбек
     st.session_state.hand = random.choice(possible_hands)
+    # Сбрасываем масти, так как рука новая
+    st.session_state.suits = None
 
-    # 2. Генерируем масти (ОДИН РАЗ)
+# --- ШАГ 2: ГЕНЕРАЦИЯ МАСТЕЙ (Если нет) ---
+# Это лечит ошибку: даже если рука осталась старая, мы сгенерируем масти
+if st.session_state.suits is None:
     h_str = st.session_state.hand
     suits_pool = ['♠', '♥', '♦', '♣']
     s1 = random.choice(suits_pool)
@@ -154,10 +146,9 @@ def get_seats_labels(spot_name):
 
 seats = get_seats_labels(spot)
 
-# --- ОТРИСОВКА (ИСПОЛЬЗУЕМ СОХРАНЕННЫЕ МАСТИ) ---
+# --- ОТРИСОВКА ---
 h = st.session_state.hand
 r1, r2 = h[0], h[1]
-# Берем масти из памяти, а не генерируем заново!
 s1, s2 = st.session_state.suits 
 c1 = "red" if s1 in ['♥','♦'] else "black"
 c2 = "red" if s2 in ['♥','♦'] else "black"
@@ -181,10 +172,9 @@ html += '</div></div>'
 
 st.markdown(html, unsafe_allow_html=True)
 
-# --- ПРОВЕРКА ОТВЕТА (ПО FULL RANGE) ---
+# --- ЛОГИКА И КНОПКИ ---
 weight = get_weight(st.session_state.hand, full_range_str)
 
-# --- КНОПКИ ---
 c1, c2 = st.columns(2, gap="small")
 if st.session_state.msg is None:
     with c1:
@@ -205,7 +195,7 @@ else:
     else: st.error(msg)
     if st.button("Next Hand ➡️"):
         st.session_state.hand = None
-        st.session_state.suits = None # СБРОС МАСТЕЙ ДЛЯ НОВОЙ РУКИ
+        st.session_state.suits = None # Сброс мастей
         st.session_state.msg = None
         st.rerun()
 
