@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 4.0 (FIXED HTML RENDERING) ---
+# --- ВЕРСИЯ 5.0 (REAL POSITIONS) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -10,7 +10,7 @@ st.markdown("""
 <style>
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
     
-    /* Игровое поле */
+    /* ИГРОВОЕ ПОЛЕ */
     .game-area {
         position: relative;
         width: 100%;
@@ -19,70 +19,93 @@ st.markdown("""
         margin: 0 auto 50px auto;
         background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%);
         border: 10px solid #3e2723;
-        border-radius: 150px;
+        border-radius: 160px;
         box-shadow: 0 10px 30px rgba(0,0,0,0.5);
     }
     
-    /* Лого */
+    /* ЛОГОТИП */
     .table-logo {
         position: absolute;
         top: 45%; left: 50%;
         transform: translate(-50%, -50%);
         color: rgba(255,255,255,0.1);
         font-weight: bold;
-        font-size: 20px;
+        font-size: 24px;
         pointer-events: none;
     }
     
-    /* Оппоненты */
+    /* МЕСТА ОППОНЕНТОВ */
     .seat {
         position: absolute;
         width: 60px; height: 60px;
-        background: rgba(0,0,0,0.7);
+        background: rgba(0,0,0,0.8);
         border: 2px solid #555;
         border-radius: 50%;
         display: flex; flex-direction: column;
         justify-content: center; align-items: center;
-        font-size: 10px; color: #aaa;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
     }
-    .seat-1 { top: -10px; left: 20%; }
-    .seat-2 { top: -10px; right: 20%; }
-    .seat-3 { top: 40%; right: -20px; }
-    .seat-4 { bottom: 15%; right: 5%; }
-    .seat-5 { bottom: 15%; left: 5%; }
     
-    /* Хиро */
+    /* Текст позиции (EP, MP...) */
+    .seat-label {
+        color: #ddd;
+        font-weight: bold;
+        font-size: 14px;
+    }
+    
+    /* Текст стека/имени (мелко) */
+    .seat-sub {
+        color: #777;
+        font-size: 9px;
+    }
+    
+    /* КООРДИНАТЫ МЕСТ (6-max) */
+    /* 5 - Слева снизу (SB) */
+    .seat-5 { bottom: 15%; left: 5%; }
+    /* 1 - Слева сверху (BB) */
+    .seat-1 { top: 15%; left: 10%; }
+    /* 2 - Сверху центр/справа (EP) */
+    .seat-2 { top: -15px; left: 50%; transform: translateX(-50%); } 
+    /* 3 - Справа сверху (MP) */
+    .seat-3 { top: 15%; right: 10%; }
+    /* 4 - Справа снизу (CO) */
+    .seat-4 { bottom: 15%; right: 5%; }
+    
+    /* ПАНЕЛЬ ХИРО (BTN) */
     .hero-panel {
         position: absolute;
-        bottom: -40px; left: 50%;
+        bottom: -45px; left: 50%;
         transform: translateX(-50%);
-        background: #222;
+        background: #1a1a1a;
         border: 2px solid #ffd700;
-        border-radius: 15px;
-        padding: 8px 15px;
-        display: flex; gap: 5px;
-        box-shadow: 0 0 15px rgba(255,215,0,0.2);
+        border-radius: 12px;
+        padding: 5px 15px;
+        display: flex; gap: 8px;
+        box-shadow: 0 0 20px rgba(255,215,0,0.15);
         z-index: 10;
+        align-items: center;
     }
     
-    /* Карты */
+    /* КАРТЫ */
     .card {
         width: 50px; height: 75px;
         background: white; border-radius: 4px;
         position: relative; color: black;
     }
-    .tl { position: absolute; top: 2px; left: 3px; font-weight: bold; font-size: 16px; line-height: 1; }
-    .cent { position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%); font-size: 28px; }
+    .tl { position: absolute; top: 0px; left: 3px; font-weight: bold; font-size: 16px; line-height: 1.2; }
+    .cent { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 26px; }
     .red { color: #d32f2f; } .black { color: #111; }
     
-    /* Кнопки */
-    div.stButton > button { width: 100%; height: 60px; font-size: 18px; font-weight: bold; border-radius: 10px; border: none; }
-    div[data-testid="column"]:nth-of-type(1) div.stButton > button { background: #c62828; color: white; }
-    div[data-testid="column"]:nth-of-type(2) div.stButton > button { background: #2e7d32; color: white; }
+    /* КНОПКИ */
+    div.stButton > button { width: 100%; height: 60px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; }
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button { background: #b71c1c; color: white; box-shadow: 0 4px 0 #7f0000; }
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button { background: #2e7d32; color: white; box-shadow: 0 4px 0 #1b5e20; }
+    div.stButton > button:active { box-shadow: none; transform: translateY(4px); }
+
 </style>
 """, unsafe_allow_html=True)
 
-# --- ДАННЫЕ И ЛОГИКА ---
+# --- ЛОГИКА ---
 ranks = 'AKQJT98765432'
 all_hands = []
 for i in range(len(ranks)):
@@ -99,29 +122,29 @@ def load_ranges():
 
 ranges_db = load_ranges()
 
-# --- ИНТЕРФЕЙС ---
 if not ranges_db:
     st.error("Файл ranges.json не найден!")
     st.stop()
 
-# Сайдбар
+# --- САЙДБАР ---
 with st.sidebar:
-    st.title("Settings")
+    st.title("⚙️ Setup")
     cat = st.selectbox("Category", list(ranges_db.keys()))
-    sub = st.selectbox("Subcategory", list(ranges_db[cat].keys()))
+    sub = st.selectbox("Section", list(ranges_db[cat].keys()))
     spot = st.selectbox("Spot", list(ranges_db[cat][sub].keys()))
     if st.button("Reset Stats"):
         st.session_state.stats = {'correct': 0, 'total': 0}
         st.rerun()
 
-st.markdown(f"<h3 style='text-align: center; margin: 0 0 20px 0;'>{spot}</h3>", unsafe_allow_html=True)
+# --- ЗАГОЛОВОК СПОТА ---
+st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
 
-# Состояние
+# --- СОСТОЯНИЕ ---
 if 'hand' not in st.session_state: st.session_state.hand = random.choice(all_hands)
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# Вес руки
+# --- ПОЛУЧЕНИЕ ВЕСА ---
 def get_weight(hand, range_str):
     if not range_str: return 0.0
     items = [x.strip() for x in range_str.split(',')]
@@ -134,7 +157,7 @@ def get_weight(hand, range_str):
 
 weight = get_weight(st.session_state.hand, ranges_db[cat][sub][spot])
 
-# --- ОТРИСОВКА СТОЛА ---
+# --- ГЕНЕРАЦИЯ ВИЗУАЛА ---
 h = st.session_state.hand
 r1, r2 = h[0], h[1]
 suits = ['♠', '♥', '♦', '♣']; s1 = random.choice(suits)
@@ -142,36 +165,43 @@ s2 = s1 if 's' in h else random.choice([x for x in suits if x != s1])
 c1 = "red" if s1 in ['♥','♦'] else "black"
 c2 = "red" if s2 in ['♥','♦'] else "black"
 
-# Генерируем HTML без лишних отступов в начале строк!
+# HTML СТОЛА С ПОЗИЦИЯМИ
 html = f"""
 <div class="game-area">
-<div class="table-logo">POKER TRAINER</div>
-<div class="seat seat-1"><span>V1</span></div>
-<div class="seat seat-2"><span>V2</span></div>
-<div class="seat seat-3"><span>V3</span></div>
-<div class="seat seat-4"><span>V4</span></div>
-<div class="seat seat-5"><span>V5</span></div>
-<div class="hero-panel">
-<div style="position:absolute; top:-20px; left:0; width:100%; text-align:center; color:gold; font-size:12px; font-weight:bold;">HERO</div>
-<div class="card"><div class="tl {c1}">{r1}<br>{s1}</div><div class="cent {c1}">{s1}</div></div>
-<div class="card"><div class="tl {c2}">{r2}<br>{s2}</div><div class="cent {c2}">{s2}</div></div>
-</div>
+    <div class="table-logo">GTO TRAINER</div>
+    
+    <div class="seat seat-5"><span class="seat-label">SB</span><span class="seat-sub">Fold</span></div>
+    <div class="seat seat-1"><span class="seat-label">BB</span><span class="seat-sub">Fold</span></div>
+    <div class="seat seat-2"><span class="seat-label">EP</span><span class="seat-sub">Fold</span></div>
+    <div class="seat seat-3"><span class="seat-label">MP</span><span class="seat-sub">Fold</span></div>
+    <div class="seat seat-4"><span class="seat-label">CO</span><span class="seat-sub">Fold</span></div>
+    
+    <div class="hero-panel">
+        <div style="display:flex; flex-direction:column; align-items:center; margin-right:5px;">
+            <span style="color:gold; font-weight:bold; font-size:12px;">HERO</span>
+            <span style="color:#555; font-size:10px;">BTN</span>
+        </div>
+        <div class="card"><div class="tl {c1}">{r1}<br>{s1}</div><div class="cent {c1}">{s1}</div></div>
+        <div class="card"><div class="tl {c2}">{r2}<br>{s2}</div><div class="cent {c2}">{s2}</div></div>
+    </div>
 </div>
 """
 st.markdown(html, unsafe_allow_html=True)
 
 # --- КНОПКИ ---
-c_1, c_2 = st.columns(2, gap="medium")
+c1, c2 = st.columns(2, gap="small")
 if st.session_state.msg is None:
-    with c_1:
+    with c1:
         if st.button("FOLD"):
-            if weight == 0.0: st.session_state.msg = "✅ Fold - OK!"; st.session_state.stats['correct']+=1
-            else: st.session_state.msg = f"❌ Raise {int(weight*100)}%!"; 
+            if weight == 0.0: st.session_state.msg = "✅ Correct! (Fold)"; st.session_state.stats['correct']+=1
+            else: st.session_state.msg = f"❌ Error! Raise {int(weight*100)}%"; 
             st.session_state.stats['total']+=1; st.rerun()
-    with c_2:
+    with c2:
         if st.button("RAISE"):
-            if weight > 0.0: st.session_state.msg = f"✅ Raise ({int(weight*100)}%)"; st.session_state.stats['correct']+=1
-            else: st.session_state.msg = "❌ Fold!"; 
+            if weight > 0.0: 
+                txt = "Pure" if weight==1.0 else f"Mix {int(weight*100)}%"
+                st.session_state.msg = f"✅ Correct! ({txt})"; st.session_state.stats['correct']+=1
+            else: st.session_state.msg = "❌ Error! Fold"; 
             st.session_state.stats['total']+=1; st.rerun()
 else:
     msg = st.session_state.msg
@@ -180,4 +210,5 @@ else:
     if st.button("Next Hand ➡️"):
         st.session_state.hand = random.choice(all_hands); st.session_state.msg = None; st.rerun()
 
-st.caption(f"Stats: {st.session_state.stats['correct']}/{st.session_state.stats['total']}")
+# --- СТАТИСТИКА ---
+st.markdown(f"<div style='text-align:center; color:#666; font-family:monospace;'>Session: {st.session_state.stats['correct']}/{st.session_state.stats['total']}</div>", unsafe_allow_html=True)
