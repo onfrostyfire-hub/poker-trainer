@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 13.0 (STRICT TRAINING MODE) ---
+# --- ВЕРСИЯ 14.0 (DEBUG MODE) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -39,7 +39,8 @@ for i in range(len(ranks)):
         elif i > j: all_hands.append(ranks[j] + ranks[i] + 'o')
         else: all_hands.append(ranks[i] + ranks[j])
 
-@st.cache_data
+# ОТКЛЮЧИЛ КЭШ ДЛЯ ОТЛАДКИ (ttl=0)
+@st.cache_data(ttl=0)
 def load_ranges():
     try:
         with open('ranges.json', 'r', encoding='utf-8') as f: return json.load(f)
@@ -52,7 +53,8 @@ if not ranges_db: st.error("Файл ranges.json не найден!"); st.stop()
 def parse_range_to_list(range_str):
     if not range_str: return []
     hand_list = []
-    cleaned_str = range_str.replace('\n', '').replace('\r', '')
+    # Удаляем переносы строк
+    cleaned_str = range_str.replace('\n', ' ').replace('\r', '')
     items = [x.strip() for x in cleaned_str.split(',')]
     for item in items:
         if not item: continue
@@ -71,7 +73,9 @@ def parse_range_to_list(range_str):
 
 def get_weight(hand, range_str):
     if not range_str: return 0.0
-    items = [x.strip() for x in range_str.replace('\n', '').split(',')]
+    # Исправление парсинга весов
+    cleaned = range_str.replace('\n', ' ').replace('\r', '')
+    items = [x.strip() for x in cleaned.split(',')]
     for item in items:
         w = 1.0; h = item
         if ':' in item: h, w_str = item.split(':'); w = float(w_str)
@@ -91,43 +95,52 @@ with st.sidebar:
 
 st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
 
-# --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ ---
+# --- ДИАГНОСТИКА ДАННЫХ ---
 spot_data = ranges_db[cat][sub][spot]
 
+# Проверка типа данных
+data_type = "Dict (New)" if isinstance(spot_data, dict) else "String (Old)"
+
 if isinstance(spot_data, dict):
-    # НОВЫЙ ФОРМАТ
     full_range_str = spot_data.get("full", "")
-    training_range_str = spot_data.get("training", "") # Берем training
+    training_range_str = spot_data.get("training", "")
     
-    # Если training пустой по ошибке, но есть full, используем full (или наоборот)
+    # Фолбек, если тренинг пустой
     if not training_range_str:
         training_range_str = full_range_str
+        st.sidebar.error("Warning: 'training' field is empty! Using full range.")
 else:
-    # СТАРЫЙ ФОРМАТ (ПРОСТО СТРОКА)
     full_range_str = str(spot_data)
     training_range_str = str(spot_data)
+    st.sidebar.warning("Warning: Using OLD format (String). Please update ranges.json!")
 
-# --- СОСТОЯНИЕ (STATE) ---
+# --- СОСТОЯНИЕ ---
 if 'hand' not in st.session_state: st.session_state.hand = None
 if 'suits' not in st.session_state: st.session_state.suits = None
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# --- ШАГ 1: ГЕНЕРАЦИЯ РУКИ ---
+# --- ШАГ 1: ГЕНЕРАЦИЯ ---
 possible_hands = parse_range_to_list(training_range_str)
 
-# ИНФО О ПУЛЕ (ДЛЯ ПРОВЕРКИ)
+# ВЫВОД ДИАГНОСТИКИ В САЙДБАР
 st.sidebar.divider()
-st.sidebar.info(f"Hands in Pool: {len(possible_hands)}")
+st.sidebar.markdown(f"**Data Format:** {data_type}")
+st.sidebar.markdown(f"**Hands in Training Pool:** {len(possible_hands)}")
+if len(possible_hands) > 0 and len(possible_hands) < 169:
+    st.sidebar.success("✅ Training Mode Active")
+    st.sidebar.code(f"Examples: {', '.join(possible_hands[:3])}...")
+elif len(possible_hands) == 169:
+    st.sidebar.error("❌ Pool is FULL (169 hands). Range not loaded?")
+else:
+    st.sidebar.warning("Pool seems suspicious.")
 
 if st.session_state.hand is None:
-    if not possible_hands:
-        possible_hands = all_hands # Фолбек если совсем всё плохо
-    
+    if not possible_hands: possible_hands = all_hands
     st.session_state.hand = random.choice(possible_hands)
     st.session_state.suits = None
 
-# --- ШАГ 2: ГЕНЕРАЦИЯ МАСТЕЙ ---
+# --- ШАГ 2: МАСТИ ---
 if st.session_state.suits is None:
     h_str = st.session_state.hand
     suits_pool = ['♠', '♥', '♦', '♣']
@@ -137,7 +150,7 @@ if st.session_state.suits is None:
     else: s2 = random.choice([x for x in suits_pool if x != s1])
     st.session_state.suits = [s1, s2]
 
-# --- ОПРЕДЕЛЕНИЕ ПОЗИЦИЙ ---
+# --- ПОЗИЦИИ ---
 def get_seats_labels(spot_name):
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     spot_upper = spot_name.upper()
@@ -178,10 +191,9 @@ html += '</div></div>'
 
 st.markdown(html, unsafe_allow_html=True)
 
-# --- ПРОВЕРКА ОТВЕТА (ПО FULL RANGE) ---
+# --- КНОПКИ ---
 weight = get_weight(st.session_state.hand, full_range_str)
 
-# --- КНОПКИ ---
 c1, c2 = st.columns(2, gap="small")
 if st.session_state.msg is None:
     with c1:
@@ -201,9 +213,6 @@ else:
     if "✅" in msg: st.success(msg)
     else: st.error(msg)
     if st.button("Next Hand ➡️"):
-        st.session_state.hand = None
-        st.session_state.suits = None
-        st.session_state.msg = None
-        st.rerun()
+        st.session_state.hand = None; st.session_state.suits = None; st.session_state.msg = None; st.rerun()
 
 st.markdown(f"<div style='text-align:center; color:#666; font-family:monospace;'>Session: {st.session_state.stats['correct']}/{st.session_state.stats['total']}</div>", unsafe_allow_html=True)
