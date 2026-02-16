@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 8.0 (SMART POSITIONS) ---
+# --- ВЕРСИЯ 9.0 (BOUNDARY TRAINING SUPPORT) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -14,17 +14,17 @@ st.markdown("""
     .game-area { position: relative; width: 100%; max-width: 500px; height: 340px; margin: 0 auto 40px auto; background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%); border: 10px solid #3e2723; border-radius: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .table-logo { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.1); font-weight: bold; font-size: 24px; pointer-events: none; }
     
-    /* МЕСТА (Общий стиль) */
+    /* МЕСТА */
     .seat { position: absolute; width: 55px; height: 55px; background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.4); z-index: 5; }
     .seat-label { color: #fff; font-weight: bold; font-size: 13px; }
     .seat-sub { color: #888; font-size: 9px; }
     
-    /* РАССТАНОВКА ПО ЧАСОВОЙ СТРЕЛКЕ (Слева от Хиро и дальше) */
-    .pos-1 { bottom: 18%; left: 8%; }  /* Слева снизу */
-    .pos-2 { top: 18%; left: 8%; }     /* Слева сверху */
-    .pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } /* Центр верх */
-    .pos-4 { top: 18%; right: 8%; }    /* Справа сверху */
-    .pos-5 { bottom: 18%; right: 8%; } /* Справа снизу */
+    /* РАССТАНОВКА */
+    .pos-1 { bottom: 18%; left: 8%; }
+    .pos-2 { top: 18%; left: 8%; }
+    .pos-3 { top: -15px; left: 50%; transform: translateX(-50%); }
+    .pos-4 { top: 18%; right: 8%; }
+    .pos-5 { bottom: 18%; right: 8%; }
     
     /* ХИРО */
     .hero-panel { position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 2px solid #ffd700; border-radius: 12px; padding: 5px 15px; display: flex; gap: 8px; box-shadow: 0 0 20px rgba(255,215,0,0.2); z-index: 10; align-items: center; }
@@ -58,6 +58,44 @@ def load_ranges():
 ranges_db = load_ranges()
 if not ranges_db: st.error("Файл ranges.json не найден!"); st.stop()
 
+# --- ПАРСЕР РЕНДЖА ---
+def parse_range_to_list(range_str):
+    """Превращает строку ренджа в список конкретных рук для генератора"""
+    if not range_str: return []
+    hand_list = []
+    items = [x.strip() for x in range_str.split(',')]
+    for item in items:
+        if not item: continue
+        # Отсекаем вес если есть (AA:0.5 -> AA)
+        hand_code = item.split(':')[0]
+        
+        # Логика добавления рук
+        targets = []
+        if hand_code in all_hands: targets.append(hand_code)
+        else:
+            # Обработка сокращений типа AK (добавляем AKs и AKo) или пар
+            if len(hand_code) == 2 and hand_code[0] != hand_code[1]:
+                s, o = hand_code + 's', hand_code + 'o'
+                if s in all_hands: targets.append(s)
+                if o in all_hands: targets.append(o)
+            elif len(hand_code) == 2 and hand_code[0] == hand_code[1]: # Pairs
+                 if hand_code in all_hands: targets.append(hand_code)
+            # В будущем можно добавить поддержку диапазонов типа 22-55, пока точное совпадение
+        
+        hand_list.extend(targets)
+    # Убираем дубликаты
+    return list(set(hand_list))
+
+def get_weight(hand, range_str):
+    if not range_str: return 0.0
+    items = [x.strip() for x in range_str.split(',')]
+    for item in items:
+        w = 1.0; h = item
+        if ':' in item: h, w_str = item.split(':'); w = float(w_str)
+        if h == hand: return w
+        if len(h) == 2 and h[0] != h[1] and hand.startswith(h): return w
+    return 0.0
+
 # --- САЙДБАР ---
 with st.sidebar:
     st.title("Settings")
@@ -70,50 +108,49 @@ with st.sidebar:
 
 st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
 
-# --- СОСТОЯНИЕ ---
-if 'hand' not in st.session_state: st.session_state.hand = random.choice(all_hands)
+# --- ПОЛУЧЕНИЕ ДАННЫХ (FULL vs TRAINING) ---
+spot_data = ranges_db[cat][sub][spot]
+
+# Проверяем, это просто строка или объект с настройками
+if isinstance(spot_data, dict):
+    full_range_str = spot_data.get("full", "")
+    training_range_str = spot_data.get("training", full_range_str) # Если нет тренинга, берем фулл
+else:
+    # Старый формат (просто строка)
+    full_range_str = str(spot_data)
+    training_range_str = str(spot_data)
+
+# --- ГЕНЕРАЦИЯ РУКИ ---
+# Если руки нет или сменили спот
+if 'hand' not in st.session_state: st.session_state.hand = None
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# --- ФУНКЦИЯ ОПРЕДЕЛЕНИЯ ПОЗИЦИЙ (АВТОМАТИЧЕСКАЯ) ---
+if st.session_state.hand is None:
+    # Генерируем руку ТОЛЬКО из training_range
+    possible_hands = parse_range_to_list(training_range_str)
+    if not possible_hands: possible_hands = all_hands # Фолбек если пусто
+    st.session_state.hand = random.choice(possible_hands)
+
+# Вес проверяем по FULL range (Истина)
+weight = get_weight(st.session_state.hand, full_range_str)
+
+# --- ОПРЕДЕЛЕНИЕ ПОЗИЦИЙ ---
 def get_seats_labels(spot_name):
-    # Стандартный порядок 6-макс
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
-    
-    # Пытаемся найти позицию Хиро в названии спота
     spot_upper = spot_name.upper()
-    hero_idx = 0 # По умолчанию EP
-    
+    hero_idx = 0 
     if "EP" in spot_upper or "UTG" in spot_upper: hero_idx = 0
     elif "MP" in spot_upper: hero_idx = 1
     elif "CO" in spot_upper: hero_idx = 2
     elif "BTN" in spot_upper or "BU" in spot_upper: hero_idx = 3
     elif "SB" in spot_upper: hero_idx = 4
     elif "BB" in spot_upper: hero_idx = 5
-    
-    # Вращаем массив, чтобы Хиро стал первым [0]
-    # Пример: если Хиро MP (idx 1), массив станет [MP, CO, BTN, SB, BB, EP]
-    rotated = order[hero_idx:] + order[:hero_idx]
-    
-    return rotated
+    return order[hero_idx:] + order[:hero_idx]
 
-# Получаем список позиций: [Hero, Pos1, Pos2, Pos3, Pos4, Pos5]
 seats = get_seats_labels(spot)
 
-# --- ВЕСА ---
-def get_weight(hand, range_str):
-    if not range_str: return 0.0
-    items = [x.strip() for x in range_str.split(',')]
-    for item in items:
-        w = 1.0; h = item
-        if ':' in item: h, w_str = item.split(':'); w = float(w_str)
-        if h == hand: return w
-        if len(h) == 2 and h[0] != h[1] and hand.startswith(h): return w
-    return 0.0
-
-weight = get_weight(st.session_state.hand, ranges_db[cat][sub][spot])
-
-# --- ГЕНЕРАЦИЯ ВИЗУАЛА ---
+# --- ОТРИСОВКА ---
 h = st.session_state.hand
 r1, r2 = h[0], h[1]
 suits = ['♠', '♥', '♦', '♣']; s1 = random.choice(suits)
@@ -121,24 +158,14 @@ s2 = s1 if 's' in h else random.choice([x for x in suits if x != s1])
 c1 = "red" if s1 in ['♥','♦'] else "black"
 c2 = "red" if s2 in ['♥','♦'] else "black"
 
-# Собираем HTML (seats[0] это Хиро, seats[1] это первый слева и т.д.)
 html = ""
 html += '<div class="game-area">'
 html += '<div class="table-logo">GTO TRAINER</div>'
-
-# Оппоненты (по часовой стрелке)
-# Pos-1: Слева снизу
 html += f'<div class="seat pos-1"><span class="seat-label">{seats[1]}</span><span class="seat-sub">Fold</span></div>'
-# Pos-2: Слева сверху
 html += f'<div class="seat pos-2"><span class="seat-label">{seats[2]}</span><span class="seat-sub">Fold</span></div>'
-# Pos-3: Центр верх
 html += f'<div class="seat pos-3"><span class="seat-label">{seats[3]}</span><span class="seat-sub">Fold</span></div>'
-# Pos-4: Справа сверху
 html += f'<div class="seat pos-4"><span class="seat-label">{seats[4]}</span><span class="seat-sub">Fold</span></div>'
-# Pos-5: Справа снизу
 html += f'<div class="seat pos-5"><span class="seat-label">{seats[5]}</span><span class="seat-sub">Fold</span></div>'
-
-# Хиро
 html += '<div class="hero-panel">'
 html += '<div style="display:flex; flex-direction:column; align-items:center; margin-right:5px;">'
 html += f'<span style="color:gold; font-weight:bold; font-size:12px;">HERO</span>'
@@ -170,6 +197,6 @@ else:
     if "✅" in msg: st.success(msg)
     else: st.error(msg)
     if st.button("Next Hand ➡️"):
-        st.session_state.hand = random.choice(all_hands); st.session_state.msg = None; st.rerun()
+        st.session_state.hand = None; st.session_state.msg = None; st.rerun()
 
 st.markdown(f"<div style='text-align:center; color:#666; font-family:monospace;'>Session: {st.session_state.stats['correct']}/{st.session_state.stats['total']}</div>", unsafe_allow_html=True)
