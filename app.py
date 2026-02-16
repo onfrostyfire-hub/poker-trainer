@@ -4,31 +4,40 @@ import random
 import pandas as pd
 import os
 
-# --- ВЕРСИЯ 17.0 (TRUE ANKI - CUMULATIVE SRS) ---
+# --- ВЕРСИЯ 18.0 (BLUE DIAMONDS & ZONE FILTER) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
-# --- CSS СТИЛИ (БЕЗ ИЗМЕНЕНИЙ) ---
+# --- CSS СТИЛИ ---
 st.markdown("""
 <style>
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
     .game-area { position: relative; width: 100%; max-width: 500px; height: 340px; margin: 0 auto 30px auto; background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%); border: 10px solid #3e2723; border-radius: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .table-logo { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.1); font-weight: bold; font-size: 24px; pointer-events: none; }
+    
     .seat { position: absolute; width: 55px; height: 55px; background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.4); z-index: 5; }
     .seat-label { color: #fff; font-weight: bold; font-size: 13px; }
     .seat-sub { color: #888; font-size: 9px; }
+    
     .chip { position: absolute; width: 20px; height: 20px; border-radius: 50%; font-size: 9px; color: #000; font-weight: bold; display: flex; justify-content: center; align-items: center; box-shadow: 1px 1px 3px rgba(0,0,0,0.5); z-index: 20; }
     .sb-chip { background: #ffd700; top: -5px; right: -5px; border: 1px solid #e6c200; }
     .bb-chip { background: #ff5722; top: -5px; right: -5px; border: 1px solid #e64a19; }
+    
     .pos-1 { bottom: 18%; left: 8%; }
     .pos-2 { top: 18%; left: 8%; }
     .pos-3 { top: -15px; left: 50%; transform: translateX(-50%); }
     .pos-4 { top: 18%; right: 8%; }
     .pos-5 { bottom: 18%; right: 8%; }
+    
     .hero-panel { position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 2px solid #ffd700; border-radius: 12px; padding: 5px 15px; display: flex; gap: 8px; box-shadow: 0 0 20px rgba(255,215,0,0.2); z-index: 10; align-items: center; }
     .card { width: 50px; height: 75px; background: white; border-radius: 4px; position: relative; color: black; }
     .tl { position: absolute; top: 0px; left: 3px; font-weight: bold; font-size: 16px; line-height: 1.2; }
     .cent { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 26px; }
-    .red { color: #d32f2f; } .black { color: #111; }
+    
+    /* Цвета мастей */
+    .suit-red { color: #d32f2f; }    /* Hearts */
+    .suit-blue { color: #1e88e5; }   /* Diamonds */
+    .suit-black { color: #111; }     /* Spades/Clubs */
+    
     div.stButton > button { width: 100%; height: 60px; font-size: 18px; font-weight: bold; border-radius: 12px; }
 </style>
 """, unsafe_allow_html=True)
@@ -45,9 +54,8 @@ def load_ranges():
 
 ranges_db = load_ranges()
 
-# --- УМНАЯ СИСТЕМА SRS (CUMULATIVE) ---
+# --- СИСТЕМА SRS ---
 SRS_FILE = 'srs_data.json'
-
 def load_srs_data():
     if os.path.exists(SRS_FILE):
         try:
@@ -61,30 +69,18 @@ def save_srs_data(data):
 def update_srs_smart(spot_id, hand, rating):
     data = load_srs_data()
     key = f"{spot_id}_{hand}"
-    
-    # Текущий вес (по умолчанию 100 для точности расчетов)
     w = data.get(key, 100)
-    
-    # Алгоритм модификации веса
-    if rating == 'hard':
-        w = w * 2.5  # Резко увеличиваем частоту
+    if rating == 'hard': w = w * 2.5
     elif rating == 'normal':
-        # Если рука была "тяжелой", понемногу возвращаем к норме
         if w > 100: w = w / 1.5
         elif w < 100: w = w * 1.2
         else: w = 100
-    elif rating == 'easy':
-        w = w / 4.0  # Резко снижаем частоту
-        
-    # Лимиты, чтобы не уйти в бесконечность
-    w = max(1, min(w, 2000))
-    
-    data[key] = int(w)
+    elif rating == 'easy': w = w / 4.0
+    data[key] = int(max(1, min(w, 2000)))
     save_srs_data(data)
 
 def get_weighted_hand(hand_list, spot_id):
     srs_data = load_srs_data()
-    # Собираем веса. Если руки нет в базе - база 100.
     weights = [srs_data.get(f"{spot_id}_{h}", 100) for h in hand_list]
     if not hand_list: return random.choice(all_hands)
     return random.choices(hand_list, weights=weights, k=1)[0]
@@ -119,16 +115,34 @@ with st.sidebar:
     st.title("Settings")
     cat = st.selectbox("Category", list(ranges_db.keys()))
     sub = st.selectbox("Section", list(ranges_db[cat].keys()))
-    spot = st.selectbox("Spot", list(ranges_db[cat][sub].keys()))
+    
+    # Режим тренировки (Фильтр)
+    train_mode = st.radio("Zone Filter", ["All", "Early (EP/MP)", "Late (CO/BU/SB)"])
+    
+    # Фильтрация списка спотов
+    all_spots = list(ranges_db[cat][sub].keys())
+    if train_mode == "Early (EP/MP)":
+        filtered_spots = [s for s in all_spots if any(p in s.upper() for p in ["EP", "UTG", "MP"])]
+    elif train_mode == "Late (CO/BU/SB)":
+        filtered_spots = [s for s in all_spots if any(p in s.upper() for p in ["CO", "BU", "BTN", "SB"])]
+    else:
+        filtered_spots = all_spots
+        
+    if not filtered_spots:
+        st.error("No spots found for this filter!")
+        spot = st.selectbox("Spot (Fallback)", all_spots)
+    else:
+        spot = st.selectbox("Spot", filtered_spots)
+        
     SPOT_ID = f"{cat}_{sub}_{spot}".replace(" ", "_")
-    if st.button("Reset Session Stats"):
+    if st.button("Reset Stats"):
         st.session_state.stats = {'correct': 0, 'total': 0}
         st.session_state.history = []
         st.rerun()
-    if st.button("Reset SRS Memory"):
-        if os.path.exists(SRS_FILE): os.remove(SRS_FILE); st.rerun()
 
-# --- ЛОГИКА СОСТОЯНИЯ ---
+st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
+
+# --- СОСТОЯНИЕ ---
 spot_data = ranges_db[cat][sub][spot]
 full_range = spot_data.get("full", "") if isinstance(spot_data, dict) else str(spot_data)
 train_range = spot_data.get("training", full_range) if isinstance(spot_data, dict) else str(spot_data)
@@ -169,14 +183,22 @@ seats = get_seats_labels(spot)
 h_val = st.session_state.hand
 r1, r2 = h_val[0], h_val[1]
 s1, s2 = st.session_state.suits 
-c1 = "red" if s1 in ['♥','♦'] else "black"
-c2 = "red" if s2 in ['♥','♦'] else "black"
+
+# Классы цветов для 4-цветной колоды (Diamond = Blue)
+def get_suit_class(s):
+    if s == '♥': return "suit-red"
+    if s == '♦': return "suit-blue"
+    return "suit-black"
+
+c1 = get_suit_class(s1)
+c2 = get_suit_class(s2)
 
 html = f'<div class="game-area"><div class="table-logo">GTO TRAINER</div>'
 for i in range(1, 6):
     lbl = seats[i]
     chip = f'<div class="chip {"sb-chip" if lbl=="SB" else "bb-chip"}">{lbl}</div>' if lbl in ["SB", "BB"] else ""
     html += f'<div class="seat pos-{i}">{chip}<span class="seat-label">{lbl}</span><span class="seat-sub">Fold</span></div>'
+
 hero_lbl = seats[0]
 hero_chip = f'<div class="chip {"sb-chip" if hero_lbl=="SB" else "bb-chip"}" style="top:-15px; right:-10px;">{hero_lbl}</div>' if hero_lbl in ["SB", "BB"] else ""
 html += f'<div class="hero-panel">{hero_chip}<div style="display:flex; flex-direction:column; align-items:center; margin-right:5px;"><span style="color:gold; font-weight:bold; font-size:12px;">HERO</span><span style="color:#555; font-size:10px;">{hero_lbl}</span></div><div class="card"><div class="tl {c1}">{r1}<br>{s1}</div><div class="cent {c1}">{s1}</div></div><div class="card"><div class="tl {c2}">{r2}<br>{s2}</div><div class="cent {c2}">{s2}</div></div></div></div>'
@@ -208,16 +230,11 @@ else:
     else: st.error(st.session_state.msg)
     s1, s2, s3 = st.columns(3)
     with s1:
-        if st.button("HARD (x2.5)"): update_srs_smart(SPOT_ID, st.session_state.hand, 'hard'); st.session_state.hand = None; st.rerun()
+        if st.button("HARD (Again)"): update_srs_smart(SPOT_ID, st.session_state.hand, 'hard'); st.session_state.hand = None; st.rerun()
     with s2:
         if st.button("NORMAL"): update_srs_smart(SPOT_ID, st.session_state.hand, 'normal'); st.session_state.hand = None; st.rerun()
     with s3:
-        if st.button("EASY (/4)"): update_srs_smart(SPOT_ID, st.session_state.hand, 'easy'); st.session_state.hand = None; st.rerun()
-
-# --- ИНДИКАТОР ВЕСА (SRS INFO) ---
-srs_data = load_srs_data()
-current_w = srs_data.get(f"{SPOT_ID}_{st.session_state.hand}", 100)
-st.sidebar.caption(f"Current hand weight: {current_w}")
+        if st.button("EASY (Skip)", type="primary"): update_srs_smart(SPOT_ID, st.session_state.hand, 'easy'); st.session_state.hand = None; st.rerun()
 
 st.divider()
 if st.session_state.history:
