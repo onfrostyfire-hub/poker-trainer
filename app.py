@@ -5,13 +5,15 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 25.0 (MULTI-SOURCE & SCENARIO CHECKBOXES) ---
+# --- ВЕРСИЯ 25.1 (SYNTAX FIX & MULTI-SOURCE) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
 st.markdown("""
 <style>
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
+    
+    /* MOBILE FIX */
     div[data-testid="column"] { width: 50% !important; flex: 1 1 50% !important; min-width: 50% !important; }
     
     /* СТОЛ */
@@ -25,12 +27,17 @@ st.markdown("""
     .table-logo { position: absolute; top: 35%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.08); font-weight: bold; font-size: 24px; pointer-events: none; }
     
     /* МЕСТА */
-    .seat { position: absolute; width: 55px; height: 55px; background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 3px 6px rgba(0,0,0,0.5); z-index: 5; }
+    .seat { 
+        position: absolute; width: 55px; height: 55px; 
+        background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; 
+        display: flex; flex-direction: column; justify-content: center; align-items: center; 
+        box-shadow: 0 3px 6px rgba(0,0,0,0.5); z-index: 5; 
+    }
     .seat-active { border-color: #ffd700; background: rgba(20,20,20,0.95); }
     .seat-folded { opacity: 0.5; border-color: #333; }
     .seat-label { color: #fff; font-weight: bold; font-size: 12px; }
     
-    /* РУБАШКИ КАРТ */
+    /* РУБАШКИ */
     .opp-cards { position: absolute; top: -12px; width: 26px; height: 36px; background: #fff; border-radius: 3px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); box-shadow: 2px 2px 4px rgba(0,0,0,0.5); z-index: 4; }
     .opp-c1 { transform: rotate(-10deg); left: 8px; } .opp-c2 { transform: rotate(10deg); left: 20px; }
 
@@ -56,7 +63,7 @@ st.markdown("""
     div[data-testid="column"]:nth-of-type(1) div.stButton > button { background-color: #c62828 !important; color: white !important; box-shadow: 0 4px 0 #8e0000; }
     div[data-testid="column"]:nth-of-type(2) div.stButton > button { background-color: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20; }
     
-    /* СЕТКА МАТРИЦЫ */
+    /* МАТРИЦА */
     .range-grid { display: grid; grid-template-columns: repeat(13, 1fr); gap: 2px; margin-top: 10px; font-family: monospace; }
     .grid-cell { aspect-ratio: 1; display: flex; justify-content: center; align-items: center; font-size: 10px; color: #ddd; border-radius: 2px; cursor: default; }
 </style>
@@ -69,32 +76,41 @@ RANGES_FILE = 'ranges.json'
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
-# --- ФУНКЦИИ ЗАГРУЗКИ ---
+# --- ФУНКЦИИ ЗАГРУЗКИ (ИСПРАВЛЕНЫ) ---
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
-        with open(RANGES_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return {}
+        with open(RANGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
 
 ranges_db = load_ranges()
 
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
-    with open(SRS_FILE, 'w') as f: json.dump(data, f)
+    with open(SRS_FILE, 'w') as f:
+        json.dump(data, f)
 
 def load_history():
-    if os.path.exists(HISTORY_FILE): return pd.read_csv(HISTORY_FILE)
+    if os.path.exists(HISTORY_FILE):
+        return pd.read_csv(HISTORY_FILE)
     return pd.DataFrame(columns=["Date", "Spot", "Hand", "Result", "CorrectAction"])
 
 def save_to_history(record):
     df_new = pd.DataFrame([record])
-    if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
-    else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+    if not os.path.exists(HISTORY_FILE):
+        df_new.to_csv(HISTORY_FILE, index=False)
+    else:
+        df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
 # --- ЛОГИКА ---
 def update_srs_smart(spot_id, hand, rating):
@@ -160,32 +176,28 @@ def render_range_matrix(range_str):
 tab_trainer, tab_stats = st.tabs(["🎮 Trainer", "📈 Statistics"])
 
 with tab_trainer:
-    # --- НОВЫЙ БЛОК НАСТРОЕК (CHECKBOXES) ---
+    # --- НАСТРОЙКИ ---
     with st.expander("⚙️ Settings", expanded=False):
         if not ranges_db:
             st.error("ranges.json is empty or not found.")
             st.stop()
 
-        # 1. Выбор Источника (Source) - Галочки
-        st.caption("1. Select Range Source(s)")
+        # 1. Source (Checkboxes)
+        st.caption("1. Select Source(s)")
         available_sources = list(ranges_db.keys())
         selected_sources = []
-        
-        # Создаем колонки для компактности
         cols = st.columns(len(available_sources))
         for i, src in enumerate(available_sources):
             # По умолчанию выбран первый
-            default_val = True if i == 0 else False
-            if cols[i].checkbox(src, value=default_val):
+            if cols[i].checkbox(src, value=(i==0)):
                 selected_sources.append(src)
         
         if not selected_sources:
-            st.warning("Please select at least one source.")
+            st.warning("Select a source.")
             st.stop()
 
-        # 2. Выбор Сценария (Scenario) - Галочки
-        st.caption("2. Select Training Scenario(s)")
-        # Собираем все доступные сценарии из выбранных источников
+        # 2. Scenario (Checkboxes)
+        st.caption("2. Select Scenario(s)")
         available_scenarios = set()
         for src in selected_sources:
             available_scenarios.update(ranges_db[src].keys())
@@ -194,31 +206,25 @@ with tab_trainer:
         selected_scenarios = []
         
         if available_scenarios:
-            sc_cols = st.columns(min(3, len(available_scenarios))) # Макс 3 колонки
+            sc_cols = st.columns(min(3, len(available_scenarios)))
             for i, sc in enumerate(available_scenarios):
                 if sc_cols[i % 3].checkbox(sc, value=(i==0)):
                     selected_scenarios.append(sc)
         
         if not selected_scenarios:
-            st.warning("Please select at least one scenario.")
+            st.warning("Select a scenario.")
             st.stop()
 
-        # 3. Выбор Позиций (Positions) - Радио
+        # 3. Position Filter
         st.caption("3. Position Filter")
         train_mode = st.radio("Positions", ["All", "Early (EP/MP)", "Late (CO/BU/SB)", "Manual"], horizontal=True, label_visibility="collapsed")
         
-        # СБОРКА ПУЛА СПОТОВ
-        # Структура: Source -> Scenario -> Spot Name
-        # Нам нужно собрать список кортежей (Source, Scenario, SpotName)
-        
+        # Сборка пула
         final_spot_pool = []
-        
         for src in selected_sources:
             for sc in selected_scenarios:
                 if sc in ranges_db[src]:
                     spots_in_group = list(ranges_db[src][sc].keys())
-                    
-                    # Фильтрация по позиции
                     for sp in spots_in_group:
                         u_sp = sp.upper()
                         is_match = False
@@ -227,18 +233,15 @@ with tab_trainer:
                         elif train_mode == "Late (CO/BU/SB)": is_match = any(x in u_sp for x in ["CO", "BU", "BTN", "SB"])
                         
                         if is_match or train_mode == "Manual":
-                            # Сохраняем полный путь, чтобы потом достать данные
-                            # Формат ID: "Source|Scenario|Spot"
                             final_spot_pool.append(f"{src}|{sc}|{sp}")
 
         if not final_spot_pool:
-            st.error("No spots match your filters.")
+            st.error("No spots match filters.")
             st.stop()
 
-        # Если Manual - даем выбрать конкретный из отфильтрованных
         if train_mode == "Manual":
-            manual_choice = st.selectbox("Select specific spot", final_spot_pool)
-            final_spot_pool = [manual_choice] # Оставляем только его
+            manual_choice = st.selectbox("Specific spot", final_spot_pool)
+            final_spot_pool = [manual_choice]
 
         if st.button("Reset SRS"):
             if os.path.exists(SRS_FILE): os.remove(SRS_FILE)
@@ -246,38 +249,30 @@ with tab_trainer:
 
     # --- ИГРОВАЯ ЛОГИКА ---
     if 'hand' not in st.session_state: st.session_state.hand = None
-    if 'current_spot_key' not in st.session_state: st.session_state.current_spot_key = None # Строка "Source|Scenario|Spot"
+    if 'current_spot_key' not in st.session_state: st.session_state.current_spot_key = None
     if 'suits' not in st.session_state: st.session_state.suits = None
     if 'msg' not in st.session_state: st.session_state.msg = None
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
 
-    # Генерация новой руки
     if st.session_state.hand is None:
-        # 1. Выбираем случайный спот из пула
         chosen_key = random.choice(final_spot_pool)
         st.session_state.current_spot_key = chosen_key
         
-        # Распаковываем ключи
         src, sc, sp = chosen_key.split('|')
-        
-        # Достаем данные
         data = ranges_db[src][sc][sp]
+        
         full_r = data.get("full", "") if isinstance(data, dict) else str(data)
         train_r = data.get("training", full_r) if isinstance(data, dict) else str(data)
         
-        # Парсим руки
         poss = parse_range_to_list(train_r)
         if not poss: poss = all_hands
         
-        # SRS веса
         srs = load_srs_data()
-        # Уникальный ID для SRS: Source_Scenario_Spot_Hand
         srs_prefix = f"{src}_{sc}_{sp}".replace(" ", "_")
         weights = [srs.get(f"{srs_prefix}_{h}", 100) for h in poss]
         
         st.session_state.hand = random.choices(poss, weights=weights, k=1)[0]
         
-        # Масти
         pool = ['♠', '♥', '♦', '♣']
         s1 = random.choice(pool)
         s2 = s1 if 's' in st.session_state.hand else random.choice([x for x in pool if x != s1])
@@ -285,15 +280,12 @@ with tab_trainer:
         st.session_state.srs_mode = False
 
     # --- ОТРИСОВКА ---
-    # Получаем данные текущей активной руки (чтобы не потерять при ререндере)
     if st.session_state.current_spot_key:
         curr_src, curr_sc, curr_sp = st.session_state.current_spot_key.split('|')
         
-        # Заголовок: Source > Scenario > Spot
         st.markdown(f"<div style='text-align:center; color:#666; font-size:12px;'>{curr_src} • {curr_sc}</div>", unsafe_allow_html=True)
         st.markdown(f"<div style='text-align:center; color:#ddd; font-weight:bold; font-size:18px; margin-bottom:5px;'>{curr_sp}</div>", unsafe_allow_html=True)
         
-        # Логика мест
         order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
         hero_idx = 0
         u = curr_sp.upper()
@@ -314,13 +306,11 @@ with tab_trainer:
         html = '<div class="game-area"><div class="table-logo">GTO PRO</div>'
         table_chips_html = ""
 
-        # Оппоненты
         for i in range(1, 6):
             pos_name = rotated_seats[i]
             std_idx_pos = order.index(pos_name)
             std_idx_hero = order.index(rotated_seats[0])
             
-            # Базовая логика RFI (Open Raise)
             is_folded = std_idx_pos < std_idx_hero
             if rotated_seats[0] == "SB" and pos_name == "BB": is_folded = False
             
@@ -333,7 +323,6 @@ with tab_trainer:
             elif pos_name == "SB": table_chips_html += f'<div class="blind-stack" style="{style}"><div class="poker-chip"></div></div>'
             elif pos_name == "BB": table_chips_html += f'<div class="blind-stack" style="{style}"><div class="poker-chip"></div><div class="poker-chip chip-stacked"></div></div>'
 
-        # Hero
         hero_pos = rotated_seats[0]
         style = get_chip_style(0)
         if hero_pos == "BTN": table_chips_html += f'<div class="dealer-button" style="{style}">D</div>'
@@ -344,13 +333,11 @@ with tab_trainer:
         html += table_chips_html + "</div>"
         st.markdown(html, unsafe_allow_html=True)
 
-        # Данные для проверки
         curr_data = ranges_db[curr_src][curr_sc][curr_sp]
         full_r = curr_data.get("full", "") if isinstance(curr_data, dict) else str(curr_data)
         ans_weight = get_weight(st.session_state.hand, full_r)
         srs_prefix = f"{curr_src}_{curr_sc}_{curr_sp}".replace(" ", "_")
 
-        # Кнопки
         if not st.session_state.srs_mode:
             c1, c2 = st.columns(2)
             with c1:
@@ -377,7 +364,6 @@ with tab_trainer:
             with b3:
                 if st.button("EASY", use_container_width=True): update_srs_smart(srs_prefix, st.session_state.hand, 'easy'); st.session_state.hand = None; st.rerun()
 
-        # Matrix
         with st.expander(f"👁️ Range: {curr_sp}"):
             st.markdown(render_range_matrix(full_r), unsafe_allow_html=True)
 
