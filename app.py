@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 22.0 (IPHONE LAYOUT FIX & COMPACT MODE) ---
+# --- ВЕРСИЯ 22.1 (SYNTAX FIX & MOBILE LAYOUT) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -14,28 +14,14 @@ st.markdown("""
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
     
     /* === ГЛАВНЫЙ ФИКС ДЛЯ АЙФОНА === */
-    /* Заставляем колонки ВСЕГДА быть в ряд */
-    div[data-testid="stHorizontalBlock"] {
-        flex-direction: row !important;
-        flex-wrap: nowrap !important;
-        gap: 8px !important;
-    }
-    
-    /* Запрещаем колонкам растягиваться на 100% ширины */
+    /* Принудительно ставим колонки в ряд и запрещаем перенос */
     div[data-testid="column"] {
-        flex: 1 1 auto !important;
-        width: auto !important;
-        min-width: 10px !important;
+        width: 50% !important;
+        flex: 1 1 50% !important;
+        min-width: 50% !important;
     }
     
-    /* Убираем лишние отступы сверху, чтобы все влезло */
-    .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 2rem !important;
-    }
-    /* ================================= */
-
-    /* СТОЛ (Чуть компактнее по высоте) */
+    /* СТОЛ */
     .game-area { 
         position: relative; width: 100%; max-width: 500px; height: 320px; 
         margin: 0 auto 10px auto; 
@@ -82,14 +68,19 @@ st.markdown("""
     .cent { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 28px; }
     .suit-red { color: #d32f2f; } .suit-blue { color: #1e88e5; } .suit-black { color: #111; }
 
-    /* КНОПКИ (Чуть компактнее по высоте) */
+    /* КНОПКИ ДЕЙСТВИЙ */
     div.stButton > button { width: 100%; height: 60px !important; font-size: 18px !important; font-weight: 800; border-radius: 12px; border: none; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 5px; }
     div.stButton > button:active { transform: scale(0.96); }
-    div.stButton > button:focus { outline: none; border: none; }
     
-    /* Цвета кнопок действий */
-    /* Используем nth-child с осторожностью, лучше полагаться на порядок рендеринга */
-    
+    /* ЦВЕТА КНОПОК FOLD/RAISE */
+    div[data-testid="column"]:nth-of-type(1) div.stButton > button { 
+        background-color: #c62828 !important; color: white !important; 
+        box-shadow: 0 4px 0 #8e0000; 
+    }
+    div[data-testid="column"]:nth-of-type(2) div.stButton > button { 
+        background-color: #2e7d32 !important; color: white !important; 
+        box-shadow: 0 4px 0 #1b5e20; 
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -105,29 +96,38 @@ all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
-        with open(RANGES_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return {}
+        with open(RANGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
 
 ranges_db = load_ranges()
 
 # --- ФУНКЦИИ ---
 def save_to_history(record):
     df_new = pd.DataFrame([record])
-    if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
-    else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+    if not os.path.exists(HISTORY_FILE):
+        df_new.to_csv(HISTORY_FILE, index=False)
+    else:
+        df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
 def load_history():
-    if os.path.exists(HISTORY_FILE): return pd.read_csv(HISTORY_FILE)
+    if os.path.exists(HISTORY_FILE):
+        return pd.read_csv(HISTORY_FILE)
     return pd.DataFrame(columns=["Date", "Spot", "Hand", "Result", "CorrectAction"])
 
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
-    with open(SRS_FILE, 'w') as f: json.dump(data, f)
+    with open(SRS_FILE, 'w') as f:
+        json.dump(data, f)
 
 def update_srs_smart(spot_id, hand, rating):
     data = load_srs_data()
@@ -167,7 +167,7 @@ def parse_range_to_list(range_str):
 tab_trainer, tab_stats = st.tabs(["🎮 Trainer", "📈 Statistics"])
 
 with tab_trainer:
-    # НАСТРОЙКИ (Expander)
+    # НАСТРОЙКИ
     with st.expander("⚙️ Settings", expanded=False):
         c1, c2 = st.columns(2)
         with c1:
@@ -177,7 +177,7 @@ with tab_trainer:
             else:
                 st.error("No ranges loaded."); st.stop()
         with c2:
-            train_mode = st.radio("Mode", ["Manual", "Early (EP/MP)", "Late (CO/BU/SB)"]) # Vertical for space
+            train_mode = st.radio("Mode", ["Manual", "Early (EP/MP)", "Late (CO/BU/SB)"]) 
 
         all_spots = list(ranges_db[cat][sub].keys())
         if train_mode == "Early (EP/MP)":
@@ -204,6 +204,7 @@ with tab_trainer:
         if train_mode == "Manual": st.session_state.active_spot = selected_spot
         else: st.session_state.active_spot = random.choice(target_spots)
         
+        # Авто-фикс
         if st.session_state.active_spot not in ranges_db[cat][sub]:
             st.session_state.active_spot = list(ranges_db[cat][sub].keys())[0]
 
@@ -282,8 +283,6 @@ with tab_trainer:
     srs_k = f"{cat}_{sub}_{curr_spot}".replace(" ", "_")
 
     if not st.session_state.srs_mode:
-        # Цветные кнопки через Style (красный/зеленый)
-        # Мы используем кастомные стили CSS вверху, поэтому здесь просто кнопки
         c1, c2 = st.columns(2)
         with c1:
             if st.button("FOLD", use_container_width=True):
@@ -298,7 +297,6 @@ with tab_trainer:
                 save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": curr_spot, "Hand": st.session_state.hand, "Result": 1 if is_correct else 0, "CorrectAction": "Raise" if ans_weight > 0 else "Fold"})
                 st.session_state.srs_mode = True; st.rerun()
     else:
-        # SRS
         if "✅" in st.session_state.msg: st.success(st.session_state.msg)
         else: st.error(st.session_state.msg)
         
