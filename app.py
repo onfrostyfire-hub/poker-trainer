@@ -5,7 +5,7 @@ import pandas as pd
 import os
 from datetime import datetime, timedelta
 
-# --- ВЕРСИЯ 23.1 (SYNTAX FIX & REALISTIC CHIPS) ---
+# --- ВЕРСИЯ 24.0 (RANGE VISUAL MATRIX 13x13) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -43,7 +43,7 @@ st.markdown("""
     .opp-c1 { transform: rotate(-10deg); left: 8px; }
     .opp-c2 { transform: rotate(10deg); left: 20px; }
 
-    /* === НОВЫЕ ФИШКИ НА СТОЛЕ === */
+    /* ФИШКИ */
     .dealer-button {
         position: absolute; width: 22px; height: 22px;
         background: #ffd700; border: 2px solid #e6c200; border-radius: 50%;
@@ -78,6 +78,25 @@ st.markdown("""
     div.stButton > button:active { transform: scale(0.96); }
     div[data-testid="column"]:nth-of-type(1) div.stButton > button { background-color: #c62828 !important; color: white !important; box-shadow: 0 4px 0 #8e0000; }
     div[data-testid="column"]:nth-of-type(2) div.stButton > button { background-color: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20; }
+
+    /* === RANGE MATRIX 13x13 === */
+    .range-grid {
+        display: grid;
+        grid-template-columns: repeat(13, 1fr);
+        gap: 2px;
+        margin-top: 10px;
+        font-family: monospace;
+    }
+    .grid-cell {
+        aspect-ratio: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 10px;
+        color: #ddd;
+        border-radius: 2px;
+        cursor: default;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -88,7 +107,7 @@ RANGES_FILE = 'ranges.json'
 ranks = 'AKQJT98765432'
 all_hands = [r1+r2+s for r1 in ranks for r2 in ranks for s in ('s','o') if (r1<r2 and s=='s') or (r1>r2 and s=='o')] + [r+r for r in ranks]
 
-# --- ФУНКЦИИ ЗАГРУЗКИ (ИСПРАВЛЕНЫ) ---
+# --- ФУНКЦИИ ЗАГРУЗКИ ---
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
@@ -160,7 +179,6 @@ def parse_range_to_list(range_str):
     return list(set(hand_list))
 
 def get_chip_style(seat_index):
-    # 0=Hero, 1=pos-1 (BL), 2=pos-2 (TL), 3=pos-3 (TC), 4=pos-4 (TR), 5=pos-5 (BR)
     if seat_index == 0: return "bottom: 22%; left: 47%;"
     if seat_index == 1: return "bottom: 25%; left: 22%;"
     if seat_index == 2: return "top: 25%; left: 22%;"
@@ -168,6 +186,37 @@ def get_chip_style(seat_index):
     if seat_index == 4: return "top: 25%; right: 22%;"
     if seat_index == 5: return "bottom: 25%; right: 22%;"
     return ""
+
+# --- ГЕНЕРАТОР МАТРИЦЫ 13x13 ---
+def render_range_matrix(range_str):
+    ranks_seq = "AKQJT98765432"
+    html = '<div class="range-grid">'
+    
+    for r1 in ranks_seq:
+        for r2 in ranks_seq:
+            # Определение руки
+            if ranks_seq.index(r1) == ranks_seq.index(r2): hand = r1 + r2
+            elif ranks_seq.index(r1) < ranks_seq.index(r2): hand = r1 + r2 + 's'
+            else: hand = r2 + r1 + 'o'
+            
+            # Вес
+            w = get_weight(hand, range_str)
+            
+            # Цвет
+            if w > 0:
+                # Зеленый (Raise). Прозрачность зависит от частоты, но минимум 0.3 чтобы было видно
+                opacity = 0.3 + (0.7 * w)
+                bg_color = f"rgba(46, 125, 50, {opacity})" 
+                color = "#fff"
+            else:
+                # Серый (Fold)
+                bg_color = "#222"
+                color = "#555"
+            
+            html += f'<div class="grid-cell" style="background-color: {bg_color}; color: {color};">{hand}</div>'
+            
+    html += '</div>'
+    return html
 
 # --- ТАБЫ ---
 tab_trainer, tab_stats = st.tabs(["🎮 Trainer", "📈 Statistics"])
@@ -246,7 +295,6 @@ with tab_trainer:
     html = '<div class="game-area"><div class="table-logo">GTO PRO</div>'
     table_chips_html = ""
 
-    # Генерация мест
     for i in range(1, 6):
         pos_name = rotated_seats[i]
         std_idx_pos = order.index(pos_name)
@@ -257,13 +305,11 @@ with tab_trainer:
         cards_html = '<div class="opp-cards"><div class="opp-c1"></div><div class="opp-c2"></div></div>' if not is_folded else ""
         html += f"""<div class="seat pos-{i} {seat_cls}">{cards_html}<span class="seat-label">{pos_name}</span></div>"""
         
-        # Фишки
         style = get_chip_style(i)
         if pos_name == "BTN": table_chips_html += f'<div class="dealer-button" style="{style}">D</div>'
         elif pos_name == "SB": table_chips_html += f'<div class="blind-stack" style="{style}"><div class="poker-chip"></div></div>'
         elif pos_name == "BB": table_chips_html += f'<div class="blind-stack" style="{style}"><div class="poker-chip"></div><div class="poker-chip chip-stacked"></div></div>'
 
-    # Hero
     hero_pos = rotated_seats[0]
     hero_style = get_chip_style(0)
     if hero_pos == "BTN": table_chips_html += f'<div class="dealer-button" style="{hero_style}">D</div>'
@@ -274,7 +320,6 @@ with tab_trainer:
     html += table_chips_html + "</div>"
     st.markdown(html, unsafe_allow_html=True)
 
-    # ДЕЙСТВИЯ
     spot_data = ranges_db[cat][sub][curr_spot]
     full_r = spot_data.get("full", "") if isinstance(spot_data, dict) else str(spot_data)
     ans_weight = get_weight(st.session_state.hand, full_r)
@@ -305,6 +350,10 @@ with tab_trainer:
             if st.button("NORMAL", use_container_width=True): update_srs_smart(srs_k, st.session_state.hand, 'normal'); st.session_state.hand = None; st.rerun()
         with b3:
             if st.button("EASY", use_container_width=True): update_srs_smart(srs_k, st.session_state.hand, 'easy'); st.session_state.hand = None; st.rerun()
+
+    # --- RANGE MATRIX (VISUALIZER) ---
+    with st.expander(f"👁️ Visual Range ({curr_spot})"):
+        st.markdown(render_range_matrix(full_r), unsafe_allow_html=True)
 
 with tab_stats:
     st.header("📊 Stats")
