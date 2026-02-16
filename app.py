@@ -2,83 +2,97 @@ import streamlit as st
 import json
 import random
 
-# --- НАСТРОЙКИ СТРАНИЦЫ ---
-st.set_page_config(page_title="GTO Trainer", page_icon="♠️", layout="centered")
+# --- 1. НАСТРОЙКИ СТРАНИЦЫ ---
+st.set_page_config(page_title="Poker Trainer", page_icon="♠️", layout="centered")
 
-# --- CSS СТИЛИ (ВИЗУАЛ) ---
+# --- 2. CSS СТИЛИ (ЭТО ОТВЕЧАЕТ ЗА КРАСОТУ) ---
 st.markdown("""
 <style>
-    /* Темная тема для всего приложения */
+    /* Темный фон всего приложения */
     .stApp {
-        background-color: #1e1e1e;
-        color: white;
+        background-color: #121212;
+        color: #e0e0e0;
     }
     
-    /* Зеленый покерный стол */
+    /* СУКНО СТОЛА */
     .poker-table {
         background: radial-gradient(ellipse at center, #35654d 0%, #254d39 100%);
-        border: 15px solid #3e2723;
-        border-radius: 100px; /* Более овальный */
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: inset 0 0 20px #000;
+        border: 12px solid #3e2723;
+        border-radius: 120px;
+        padding: 40px;
+        margin: 0 auto 30px auto;
+        box-shadow: inset 0 0 30px #000, 0 10px 20px rgba(0,0,0,0.5);
         text-align: center;
+        max-width: 600px;
     }
     
-    /* Место героя */
+    /* МЕСТО ХИРО */
     .hero-seat {
-        background-color: rgba(0,0,0,0.5);
+        background-color: rgba(0, 0, 0, 0.6);
         border: 2px solid #ffd700;
-        border-radius: 15px;
-        padding: 10px;
+        border-radius: 16px;
+        padding: 15px;
         display: inline-block;
         margin-top: 20px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
     
-    /* Сами карты */
-    .playing-card {
+    /* КАРТЫ */
+    .poker-card {
         display: inline-block;
         width: 60px;
-        height: 90px;
-        background-color: #fdfdfd;
+        height: 88px;
+        background-color: white;
         border-radius: 6px;
-        margin: 4px;
+        margin: 0 5px;
         position: relative;
-        box-shadow: 1px 1px 4px rgba(0,0,0,0.5);
+        box-shadow: 1px 1px 4px rgba(0,0,0,0.4);
+        text-align: left;
     }
     
-    .card-top-left {
+    /* Шрифт на картах */
+    .card-rank {
         position: absolute;
         top: 2px;
         left: 4px;
         font-size: 20px;
         font-weight: bold;
         line-height: 1;
+        font-family: Arial, sans-serif;
     }
     
-    .card-center {
+    .card-suit-center {
         position: absolute;
         top: 50%;
         left: 50%;
         transform: translate(-50%, -50%);
-        font-size: 30px;
+        font-size: 32px;
     }
 
-    .red-suit { color: #d32f2f; }
-    .black-suit { color: #212121; }
-    
-    /* Стиль кнопок */
+    /* Цвета мастей */
+    .suit-red { color: #d32f2f; }
+    .suit-black { color: #212121; }
+
+    /* КНОПКИ */
     div.stButton > button {
         width: 100%;
         height: 60px;
         font-size: 20px;
+        font-weight: bold;
         border-radius: 12px;
-        border: 1px solid #444;
+    }
+    
+    /* Текст статистики */
+    .stats-text {
+        text-align: center;
+        color: #888;
+        margin-top: 20px;
+        font-family: monospace;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- ЛОГИКА ---
+# --- 3. ЛОГИКА ПОКЕРА ---
 ranks = 'AKQJT98765432'
 all_hands = []
 for i in range(len(ranks)):
@@ -107,6 +121,7 @@ def parse_range_string(range_str):
         if hand_code in all_hands:
             target_hands.append(hand_code)
         else:
+            # Обработка пар, суйтед, разномастных без суффиксов
             if len(hand_code) == 2 and hand_code[0] != hand_code[1]:
                 s, o = hand_code + 's', hand_code + 'o'
                 if s in all_hands: target_hands.append(s)
@@ -119,27 +134,35 @@ def parse_range_string(range_str):
 
 @st.cache_data
 def load_ranges():
-    with open('ranges.json', 'r', encoding='utf-8') as f:
-        return json.load(f)
+    # Пытаемся загрузить JSON
+    try:
+        with open('ranges.json', 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return {"Error": {"Error": {"No ranges.json found": ""}}}
 
-# --- ИНТЕРФЕЙС ---
-try:
-    ranges_db = load_ranges()
-except:
-    st.error("Ошибка загрузки ranges.json. Проверь, что файл существует и там правильный JSON.")
-    st.stop()
+# --- 4. ИНТЕРФЕЙС И СОСТОЯНИЕ ---
+ranges_db = load_ranges()
 
+# Сайдбар
 with st.sidebar:
-    st.title("Settings")
-    category = st.selectbox("Category", list(ranges_db.keys()))
-    subcategory = st.selectbox("Section", list(ranges_db[category].keys()))
-    spot_name = st.selectbox("Spot", list(ranges_db[category][subcategory].keys()))
+    st.header("Настройки")
     
-    if st.button("Reset Stats"):
+    # Защита от пустого файла
+    if "Error" in ranges_db:
+        st.error("Файл ranges.json не найден!")
+        st.stop()
+        
+    category = st.selectbox("Категория", list(ranges_db.keys()))
+    subcategory = st.selectbox("Раздел", list(ranges_db[category].keys()))
+    spot_name = st.selectbox("Спот", list(ranges_db[category][subcategory].keys()))
+    
+    st.divider()
+    if st.button("Сброс статистики"):
         st.session_state.stats = {'correct': 0, 'total': 0}
         st.rerun()
 
-# Инициализация
+# Инициализация переменных
 if 'current_hand' not in st.session_state: st.session_state.current_hand = None
 if 'feedback' not in st.session_state: st.session_state.feedback = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
@@ -148,125 +171,116 @@ if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'tot
 range_str = ranges_db[category][subcategory][spot_name]
 current_range_dict = parse_range_string(range_str)
 
-# Новая рука
+# Генерация руки
 if st.session_state.current_hand is None:
     st.session_state.current_hand = random.choice(all_hands)
 
 hand = st.session_state.current_hand
 
-# --- ФУНКЦИЯ ОТРИСОВКИ (Исправленная) ---
-def render_game(hand_str, spot_title):
-    rank1 = hand_str[0]
-    rank2 = hand_str[1]
+# --- 5. ОТРИСОВКА СТОЛА (ГЛАВНАЯ ФУНКЦИЯ) ---
+def render_game_visuals(hand_str, title):
+    rank1, rank2 = hand_str[0], hand_str[1]
     
-    # Определяем масти
-    suits_list = ['♠', '♥', '♦', '♣']
-    s1 = random.choice(suits_list)
+    # Генерация мастей
+    suits = ['♠', '♥', '♦', '♣']
+    s1 = random.choice(suits)
     
     is_suited = (len(hand_str) > 2 and hand_str[2] == 's')
-    is_offsuit = (len(hand_str) > 2 and hand_str[2] == 'o')
     is_pair = (len(hand_str) == 2)
-
+    
     if is_suited:
         s2 = s1
     elif is_pair:
-        # Для пары масть второй карты любая, кроме первой
-        available = [s for s in suits_list if s != s1]
-        s2 = random.choice(available)
-    else: 
-        # Для разномастных (offsuit) тоже любая другая
-        available = [s for s in suits_list if s != s1]
-        s2 = random.choice(available)
+        s2 = random.choice([s for s in suits if s != s1])
+    else:
+        s2 = random.choice([s for s in suits if s != s1])
     
-    # Определяем цвет (для CSS)
-    # Червы и Бубны - красные
-    red_suits = ['♥', '♦']
-    c1_css = "red-suit" if s1 in red_suits else "black-suit"
-    c2_css = "red-suit" if s2 in red_suits else "black-suit"
-
-    # HTML код стола
-    html_code = f"""
+    # Определение цвета
+    reds = ['♥', '♦']
+    c1 = "suit-red" if s1 in reds else "suit-black"
+    c2 = "suit-red" if s2 in reds else "suit-black"
+    
+    # HTML Строка
+    html = f"""
     <div class="poker-table">
-        <h3 style="margin:0; color:#eee;">{spot_title}</h3>
-        <div style="height: 30px;"></div>
+        <h3 style="color: #ddd; margin-bottom: 30px;">{title}</h3>
         
         <div class="hero-seat">
-            <div style="color: gold; font-weight: bold; font-size: 14px; margin-bottom: 5px;">HERO</div>
+            <div style="color: gold; font-weight: bold; font-size: 14px; margin-bottom: 8px;">HERO</div>
             
-            <div class="playing-card">
-                <div class="card-top-left {c1_css}">{rank1}<br>{s1}</div>
-                <div class="card-center {c1_css}">{s1}</div>
+            <div class="poker-card">
+                <div class="card-rank {c1}">{rank1}<br>{s1}</div>
+                <div class="card-suit-center {c1}">{s1}</div>
             </div>
             
-            <div class="playing-card">
-                <div class="card-top-left {c2_css}">{rank2}<br>{s2}</div>
-                <div class="card-center {c2_css}">{s2}</div>
+            <div class="poker-card">
+                <div class="card-rank {c2}">{rank2}<br>{s2}</div>
+                <div class="card-suit-center {c2}">{s2}</div>
             </div>
         </div>
     </div>
     """
-    st.markdown(html_code, unsafe_allow_html=True)
+    
+    # ВЫВОД НА ЭКРАН
+    st.markdown(html, unsafe_allow_html=True)
 
-# Рисуем стол
-render_game(hand, spot_name)
+# Вызываем отрисовку
+render_game_visuals(hand, spot_name)
 
-# Логика весов
+# --- 6. КНОПКИ И ПРОВЕРКА ---
 correct_weight = current_range_dict.get(hand, 0.0)
 
-# Кнопки управления
 col1, col2 = st.columns(2)
 
+# Если пользователь еще не ответил
 if st.session_state.feedback is None:
     with col1:
         if st.button("FOLD"):
-            # Если вес 0, значит фолд правильный
-            is_correct = (correct_weight == 0.0)
-            if is_correct:
-                msg = "✅ Верно! (Fold)"
+            if correct_weight == 0.0:
+                st.session_state.feedback = "✅ Верно! (Fold)"
                 st.session_state.stats['correct'] += 1
             else:
                 freq = int(correct_weight * 100)
-                msg = f"❌ Ошибка. Нужно Raise {freq}%"
-            
-            st.session_state.feedback = msg
+                st.session_state.feedback = f"❌ Ошибка. Нужно Raise {freq}%"
             st.session_state.stats['total'] += 1
             st.rerun()
             
     with col2:
         if st.button("RAISE"):
-            # Если вес > 0, значит рейз (или микс) правильный
-            is_correct = (correct_weight > 0.0)
-            if is_correct:
+            if correct_weight > 0.0:
                 if correct_weight == 1.0:
-                    msg = "✅ Верно! (Pure Raise)"
+                    st.session_state.feedback = "✅ Верно! (Raise)"
                 else:
                     freq = int(correct_weight * 100)
-                    msg = f"⚠️ Верно (Mix). Raise {freq}%"
+                    st.session_state.feedback = f"⚠️ Верно (Mix). Raise {freq}%"
                 st.session_state.stats['correct'] += 1
             else:
-                msg = "❌ Ошибка. Здесь Fold."
-            
-            st.session_state.feedback = msg
+                st.session_state.feedback = "❌ Ошибка. Здесь Fold."
             st.session_state.stats['total'] += 1
             st.rerun()
 
+# Если пользователь ответил (показываем результат)
 else:
-    # Отображение результата
-    if "✅" in st.session_state.feedback:
-        st.success(st.session_state.feedback)
-    elif "❌" in st.session_state.feedback:
-        st.error(st.session_state.feedback)
+    msg = st.session_state.feedback
+    if "✅" in msg:
+        st.success(msg)
+    elif "❌" in msg:
+        st.error(msg)
     else:
-        st.warning(st.session_state.feedback)
+        st.warning(msg)
     
     # Кнопка Next
-    if st.button("Next Hand ➡️", type="primary"):
+    if st.button("Следующая раздача ➡️", type="primary"):
         st.session_state.current_hand = None
         st.session_state.feedback = None
         st.rerun()
 
-# Статистика
-cor = st.session_state.stats['correct']
-tot = st.session_state.stats['total']
-perc = int(cor/tot*100) if tot > 0 else 0
-st.markdown(f"<div style='text-align:center; color:grey; margin-top:20px;'>Stats: {cor}/{tot} ({perc}%)</div>", unsafe_allow_html=True)
+# --- 7. СТАТИСТИКА ---
+correct = st.session_state.stats['correct']
+total = st.session_state.stats['total']
+percent = int(correct/total*100) if total > 0 else 0
+
+st.markdown(
+    f"<div class='stats-text'>Статистика сессии: {correct} / {total} ({percent}%)</div>", 
+    unsafe_allow_html=True
+)
