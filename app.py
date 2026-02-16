@@ -2,7 +2,7 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 9.0 (BOUNDARY TRAINING SUPPORT) ---
+# --- ВЕРСИЯ 10.0 (FINAL PRODUCTION) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
@@ -58,34 +58,30 @@ def load_ranges():
 ranges_db = load_ranges()
 if not ranges_db: st.error("Файл ranges.json не найден!"); st.stop()
 
-# --- ПАРСЕР РЕНДЖА ---
+# --- ПАРСЕР ДЛЯ ГЕНЕРАЦИИ (Берем руки из Training списка) ---
 def parse_range_to_list(range_str):
-    """Превращает строку ренджа в список конкретных рук для генератора"""
     if not range_str: return []
     hand_list = []
     items = [x.strip() for x in range_str.split(',')]
     for item in items:
         if not item: continue
-        # Отсекаем вес если есть (AA:0.5 -> AA)
+        # Убираем вес для генератора
         hand_code = item.split(':')[0]
         
-        # Логика добавления рук
         targets = []
         if hand_code in all_hands: targets.append(hand_code)
         else:
-            # Обработка сокращений типа AK (добавляем AKs и AKo) или пар
+            # Обработка сокращений типа AK, A9 (без s/o = оба)
             if len(hand_code) == 2 and hand_code[0] != hand_code[1]:
                 s, o = hand_code + 's', hand_code + 'o'
                 if s in all_hands: targets.append(s)
                 if o in all_hands: targets.append(o)
-            elif len(hand_code) == 2 and hand_code[0] == hand_code[1]: # Pairs
+            elif len(hand_code) == 2 and hand_code[0] == hand_code[1]: 
                  if hand_code in all_hands: targets.append(hand_code)
-            # В будущем можно добавить поддержку диапазонов типа 22-55, пока точное совпадение
-        
         hand_list.extend(targets)
-    # Убираем дубликаты
     return list(set(hand_list))
 
+# --- ПРОВЕРКА ОТВЕТА (По Full Range) ---
 def get_weight(hand, range_str):
     if not range_str: return 0.0
     items = [x.strip() for x in range_str.split(',')]
@@ -108,31 +104,28 @@ with st.sidebar:
 
 st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
 
-# --- ПОЛУЧЕНИЕ ДАННЫХ (FULL vs TRAINING) ---
+# --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ СПОТА ---
 spot_data = ranges_db[cat][sub][spot]
-
-# Проверяем, это просто строка или объект с настройками
 if isinstance(spot_data, dict):
     full_range_str = spot_data.get("full", "")
-    training_range_str = spot_data.get("training", full_range_str) # Если нет тренинга, берем фулл
+    training_range_str = spot_data.get("training", full_range_str)
 else:
-    # Старый формат (просто строка)
     full_range_str = str(spot_data)
     training_range_str = str(spot_data)
 
-# --- ГЕНЕРАЦИЯ РУКИ ---
-# Если руки нет или сменили спот
+# --- СОСТОЯНИЕ ---
 if 'hand' not in st.session_state: st.session_state.hand = None
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
+# Если нужно сдать новую руку
 if st.session_state.hand is None:
-    # Генерируем руку ТОЛЬКО из training_range
     possible_hands = parse_range_to_list(training_range_str)
-    if not possible_hands: possible_hands = all_hands # Фолбек если пусто
+    # Если список тренировки пуст (на всякий случай), берем все руки
+    if not possible_hands: possible_hands = all_hands 
     st.session_state.hand = random.choice(possible_hands)
 
-# Вес проверяем по FULL range (Истина)
+# Получаем правильный ответ из ПОЛНОГО ренджа
 weight = get_weight(st.session_state.hand, full_range_str)
 
 # --- ОПРЕДЕЛЕНИЕ ПОЗИЦИЙ ---
