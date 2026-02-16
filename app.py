@@ -2,38 +2,28 @@ import streamlit as st
 import json
 import random
 
-# --- ВЕРСИЯ 10.0 (FINAL PRODUCTION) ---
+# --- ВЕРСИЯ 11.0 (FIXED SUITS & STRICT TRAINING) ---
 st.set_page_config(page_title="Poker Trainer Pro", page_icon="♠️", layout="centered")
 
 # --- CSS СТИЛИ ---
 st.markdown("""
 <style>
     .stApp { background-color: #0a0a0a; color: #e0e0e0; }
-    
-    /* СТОЛ */
     .game-area { position: relative; width: 100%; max-width: 500px; height: 340px; margin: 0 auto 40px auto; background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%); border: 10px solid #3e2723; border-radius: 170px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
     .table-logo { position: absolute; top: 40%; left: 50%; transform: translate(-50%, -50%); color: rgba(255,255,255,0.1); font-weight: bold; font-size: 24px; pointer-events: none; }
-    
-    /* МЕСТА */
     .seat { position: absolute; width: 55px; height: 55px; background: rgba(0,0,0,0.85); border: 2px solid #555; border-radius: 50%; display: flex; flex-direction: column; justify-content: center; align-items: center; box-shadow: 0 4px 6px rgba(0,0,0,0.4); z-index: 5; }
     .seat-label { color: #fff; font-weight: bold; font-size: 13px; }
     .seat-sub { color: #888; font-size: 9px; }
-    
-    /* РАССТАНОВКА */
     .pos-1 { bottom: 18%; left: 8%; }
     .pos-2 { top: 18%; left: 8%; }
     .pos-3 { top: -15px; left: 50%; transform: translateX(-50%); }
     .pos-4 { top: 18%; right: 8%; }
     .pos-5 { bottom: 18%; right: 8%; }
-    
-    /* ХИРО */
     .hero-panel { position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%); background: #1a1a1a; border: 2px solid #ffd700; border-radius: 12px; padding: 5px 15px; display: flex; gap: 8px; box-shadow: 0 0 20px rgba(255,215,0,0.2); z-index: 10; align-items: center; }
     .card { width: 50px; height: 75px; background: white; border-radius: 4px; position: relative; color: black; }
     .tl { position: absolute; top: 0px; left: 3px; font-weight: bold; font-size: 16px; line-height: 1.2; }
     .cent { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 26px; }
     .red { color: #d32f2f; } .black { color: #111; }
-    
-    /* КНОПКИ */
     div.stButton > button { width: 100%; height: 60px; font-size: 18px; font-weight: bold; border-radius: 12px; border: none; }
     div[data-testid="column"]:nth-of-type(1) div.stButton > button { background: #b71c1c; color: white; }
     div[data-testid="column"]:nth-of-type(2) div.stButton > button { background: #2e7d32; color: white; }
@@ -58,20 +48,22 @@ def load_ranges():
 ranges_db = load_ranges()
 if not ranges_db: st.error("Файл ranges.json не найден!"); st.stop()
 
-# --- ПАРСЕР ДЛЯ ГЕНЕРАЦИИ (Берем руки из Training списка) ---
+# --- ПАРСЕР ДЛЯ ГЕНЕРАЦИИ ---
 def parse_range_to_list(range_str):
     if not range_str: return []
     hand_list = []
-    items = [x.strip() for x in range_str.split(',')]
+    # Удаляем переносы строк и пробелы
+    cleaned_str = range_str.replace('\n', '').replace('\r', '')
+    items = [x.strip() for x in cleaned_str.split(',')]
+    
     for item in items:
         if not item: continue
-        # Убираем вес для генератора
-        hand_code = item.split(':')[0]
+        hand_code = item.split(':')[0] # Убираем вес
         
         targets = []
         if hand_code in all_hands: targets.append(hand_code)
         else:
-            # Обработка сокращений типа AK, A9 (без s/o = оба)
+            # AK -> AKs, AKo
             if len(hand_code) == 2 and hand_code[0] != hand_code[1]:
                 s, o = hand_code + 's', hand_code + 'o'
                 if s in all_hands: targets.append(s)
@@ -81,10 +73,10 @@ def parse_range_to_list(range_str):
         hand_list.extend(targets)
     return list(set(hand_list))
 
-# --- ПРОВЕРКА ОТВЕТА (По Full Range) ---
+# --- ПРОВЕРКА ОТВЕТА ---
 def get_weight(hand, range_str):
     if not range_str: return 0.0
-    items = [x.strip() for x in range_str.split(',')]
+    items = [x.strip() for x in range_str.replace('\n', '').split(',')]
     for item in items:
         w = 1.0; h = item
         if ':' in item: h, w_str = item.split(':'); w = float(w_str)
@@ -104,29 +96,48 @@ with st.sidebar:
 
 st.markdown(f"<h3 style='text-align: center; margin: -20px 0 20px 0; color: #aaa;'>{spot}</h3>", unsafe_allow_html=True)
 
-# --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ СПОТА ---
+# --- ИНИЦИАЛИЗАЦИЯ ДАННЫХ ---
 spot_data = ranges_db[cat][sub][spot]
 if isinstance(spot_data, dict):
     full_range_str = spot_data.get("full", "")
     training_range_str = spot_data.get("training", full_range_str)
 else:
+    # Старый формат
     full_range_str = str(spot_data)
     training_range_str = str(spot_data)
 
-# --- СОСТОЯНИЕ ---
+# --- СОСТОЯНИЕ (STATE) ---
+# Теперь храним не только руку, но и масти!
 if 'hand' not in st.session_state: st.session_state.hand = None
+if 'suits' not in st.session_state: st.session_state.suits = None # Исправляет баг смены мастей
 if 'msg' not in st.session_state: st.session_state.msg = None
 if 'stats' not in st.session_state: st.session_state.stats = {'correct': 0, 'total': 0}
 
-# Если нужно сдать новую руку
+# --- ГЕНЕРАЦИЯ РУКИ И МАСТЕЙ ---
 if st.session_state.hand is None:
+    # 1. Генерируем руку
     possible_hands = parse_range_to_list(training_range_str)
-    # Если список тренировки пуст (на всякий случай), берем все руки
-    if not possible_hands: possible_hands = all_hands 
+    
+    # Если список пуст, выводим предупреждение (вместо рандомной руки)
+    if not possible_hands:
+        st.error("Ошибка! Список тренировочных рук пуст. Проверь ranges.json (поле 'training').")
+        st.stop()
+        
     st.session_state.hand = random.choice(possible_hands)
 
-# Получаем правильный ответ из ПОЛНОГО ренджа
-weight = get_weight(st.session_state.hand, full_range_str)
+    # 2. Генерируем масти (ОДИН РАЗ)
+    h_str = st.session_state.hand
+    suits_pool = ['♠', '♥', '♦', '♣']
+    s1 = random.choice(suits_pool)
+    
+    if 's' in h_str: # Suited
+        s2 = s1
+    elif 'o' in h_str: # Offsuit
+        s2 = random.choice([x for x in suits_pool if x != s1])
+    else: # Pairs
+        s2 = random.choice([x for x in suits_pool if x != s1])
+    
+    st.session_state.suits = [s1, s2]
 
 # --- ОПРЕДЕЛЕНИЕ ПОЗИЦИЙ ---
 def get_seats_labels(spot_name):
@@ -143,11 +154,11 @@ def get_seats_labels(spot_name):
 
 seats = get_seats_labels(spot)
 
-# --- ОТРИСОВКА ---
+# --- ОТРИСОВКА (ИСПОЛЬЗУЕМ СОХРАНЕННЫЕ МАСТИ) ---
 h = st.session_state.hand
 r1, r2 = h[0], h[1]
-suits = ['♠', '♥', '♦', '♣']; s1 = random.choice(suits)
-s2 = s1 if 's' in h else random.choice([x for x in suits if x != s1])
+# Берем масти из памяти, а не генерируем заново!
+s1, s2 = st.session_state.suits 
 c1 = "red" if s1 in ['♥','♦'] else "black"
 c2 = "red" if s2 in ['♥','♦'] else "black"
 
@@ -170,6 +181,9 @@ html += '</div></div>'
 
 st.markdown(html, unsafe_allow_html=True)
 
+# --- ПРОВЕРКА ОТВЕТА (ПО FULL RANGE) ---
+weight = get_weight(st.session_state.hand, full_range_str)
+
 # --- КНОПКИ ---
 c1, c2 = st.columns(2, gap="small")
 if st.session_state.msg is None:
@@ -190,6 +204,9 @@ else:
     if "✅" in msg: st.success(msg)
     else: st.error(msg)
     if st.button("Next Hand ➡️"):
-        st.session_state.hand = None; st.session_state.msg = None; st.rerun()
+        st.session_state.hand = None
+        st.session_state.suits = None # СБРОС МАСТЕЙ ДЛЯ НОВОЙ РУКИ
+        st.session_state.msg = None
+        st.rerun()
 
 st.markdown(f"<div style='text-align:center; color:#666; font-family:monospace;'>Session: {st.session_state.stats['correct']}/{st.session_state.stats['total']}</div>", unsafe_allow_html=True)
