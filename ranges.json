@@ -2,24 +2,24 @@
   "Jayser": {
     "Open Raise": {
       "EP (UTG)": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,AKs,AQs,AJs,ATs,A9s,A8s,A7s,A6s,A5s,A4s,A3s,KQs,KJs,KTs,K9s,QJs,QTs,JTs,T9s,98s,87s,76s,65s,AKo,AQo,AJo,ATo,KQo,KJo",
-        "training": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,AKs,AQs,AJs,ATs,A9s,A8s,A7s,A6s,A5s,A4s,A3s,KQs,KJs,KTs,K9s,QJs,QTs,JTs,T9s,98s,87s,76s,65s,AKo,AQo,AJo,ATo,KQo,KJo"
+        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s:0.5,KQ,KJ,KTs,K9s,K8s,QJs,QTs,Q9s,JTs,J9s,T9s",
+        "training": "66,ATo,A7s,A6s,A3s,A2s,KJo,K9s,K8s,Q9s,J9s,T9s,55,44,33,22,KTo,K8s,K7s,QJo,Q8s,J8s,T8s,98s,97s,87s,76s,65s,54s"
       },
       "MP": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AKs,AQs,AJs,ATs,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQs,KJs,KTs,K9s,K8s,K7s,K6s,K5s,QJs,QTs,Q9s,JTs,J9s,T9s,T8s,98s,87s,76s,65s,54s,AKo,AQo,AJo,ATo,A9o,KQo,KJo,KTo,QJo,QTo,JTo",
-        "training": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AKs,AQs,AJs,ATs,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQs,KJs,KTs,K9s,K8s,K7s,K6s,K5s,QJs,QTs,Q9s,JTs,J9s,T9s,T8s,98s,87s,76s,65s,54s,AKo,AQo,AJo,ATo,A9o,KQo,KJo,KTo,QJo,QTo,JTo"
+        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,AK,AQ,AJ,AT,A9s,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,QJ,QTs,Q9s,JTs,J9s,T9s,T8s,98s",
+        "training": "55,44,ATo,A3s,A2s,KJo,KTo,K9s,K8s,K7s,QJo,Q9s,J9s,T9s,T8s,98s,33,22,A9o,K6s,QTo,Q8s,J8s,97s,87s,86s,76s,65s,54s"
       },
       "CO": {
-        "full": "22+,A2s+,K2s+,Q2s+,J4s+,T6s+,96s+,85s+,75s+,64s+,54s,A2o+,K7o+,Q8o+,J8o+,T8o+,98o",
-        "training": "22+,A2s+,K2s+,Q2s+,J4s+,T6s+,96s+,85s+,75s+,64s+,54s,A2o+,K7o+,Q8o+,J8o+,T8o+,98o"
+        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,K6s,K5s,K4s,QJ,QT,Q9s,Q8s,Q7s,Q6s,JT,J9s,J8s,T9s,T8s,98s,97s,87s,86s,76s,65s,54s",
+        "training": "33,22,A9o,K6s,K5s,K4s,QTo,Q7s,Q6s,JTo,A8o,K9o,K3s,K2s,Q5s,Q4s,J7s,J6s,T7s,T6s,96s,75s,64s,53s"
       },
       "BTN": {
-        "full": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,93s+,84s+,74s+,63s+,53s+,43s,A2o+,K2o+,Q4o+,J6o+,T7o+,97o+,87o",
-        "training": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,93s+,84s+,74s+,63s+,53s+,43s,A2o+,K2o+,Q4o+,J6o+,T7o+,97o+,87o"
+        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4,A3s,A2s,KQ,KJ,KT,K9,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJ,QT,Q9,Q8s,Q7s,Q6s,Q5s,JT,J9,J8s,J7s,J6s,T9,T8s,T7s,T6s,98s,97s,96s,87s,86s,85s,76s,75s,65s,64s,54s",
+        "training": "A5o,A4o,K9o,K3s,K2s,Q9o,Q5s,J9o,J6s,T9o,T6s,96s,85s,A3o,A2o,K8o,K7o,Q8o,Q4s,Q3s,Q2s,J5s,J4s,T5s,T4s,98o,95s,94s,87o,84s,74s,63s,52s,43s,42s,32s"
       },
       "SB": {
-        "full": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,83s+,73s+,63s+,53s+,43s,A2o+,K2o+,Q2o+,J4o+,T6o+,96o+,86o+,76o",
-        "training": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,83s+,73s+,63s+,53s+,43s,A2o+,K2o+,Q2o+,J4o+,T6o+,96o+,86o+,76o"
+        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4s,A3s,A2s,KQ,KJ,KT,K9,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJ,QT,Q9,Q8s,Q7s,Q6s,Q5s,Q4s,Q3s,JT,J9,J8s,J7s,J6s,J5s,T9,T8s,T7s,T6s,98,97s,96s,87s,86s,85s,76s,75s,65s,64s,54s,53s",
+        "training": "22,A6o,A5o,K9o,K3s,K2s,Q9o,Q4s,Q3s,J9o,J6s,J5s,T9o,T6s,98o,96s,85s,53s,A4o,A3o,A2o,K8o,K7o,Q8o,Q2s,J8o,J4s,J3s,J2s,T8o,T5s,T4s,97o,95s,94s,87o,84s,76o,73s,63s,52s,42s,32s"
       }
     },
     "Def vs 3bet": {
@@ -41,3 +41,4 @@
     }
   }
 }
+
