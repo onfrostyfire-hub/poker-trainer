@@ -10,7 +10,7 @@
         "training": "55,44,ATo,A3s,A2s,KJo,KTo,K9s,K8s,K7s,QJo,Q9s,J9s,T9s,T8s,98s,33,22,A9o,K6s,QTo,Q8s,J8s,97s,87s,86s,76s,65s,54s"
       },
       "CO": {
-        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8s,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,K6s,K5s,K4s,QJ,QT,Q9s,Q8s,Q7s,Q6s,JT,J9s,J8s,T9s,T8s,98s,97s,87s,86s,76s,65s,54s",
+        "full": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7s,A6s,A5s,A4s,A3s,A2s,KQ,KJ,KT,K9s,K8s,K7s,K6s,K5s,K4s,QJ,QT,Q9s,Q8s,Q7s,Q6s,JT,J9s,J8s,T9s,T8s,98s,97s,87s,86s,76s,65s,54s",
         "training": "33,22,A9o,K6s,K5s,K4s,QTo,Q7s,Q6s,JTo,A8o,K9o,K8o,K3s,K2s,Q5s,Q4s,J7s,J6s,T7s,T6s,96s,75s,64s,53s"
       },
       "BTN": {
@@ -41,6 +41,7 @@
     }
   }
 }
+
 
 
 
