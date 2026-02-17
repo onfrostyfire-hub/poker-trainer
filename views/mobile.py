@@ -15,30 +15,9 @@ def show():
         }
 
         /* КНОПКИ В РЯД */
-        .mobile-controls { 
-            display: flex; 
-            flex-direction: row; 
-            width: 100%; 
-            gap: 8px; 
-            margin-top: 5px; 
-        }
-        
-        .mobile-controls div[data-testid="column"] { 
-            flex: 1 1 0% !important; 
-            min-width: 0 !important; 
-        }
-
-        .mobile-controls button { 
-            width: 100% !important; 
-            height: 65px !important; 
-            font-size: 16px !important; 
-            font-weight: 800 !important; 
-            border-radius: 12px !important; 
-            border: none !important; 
-            text-transform: uppercase !important; 
-            margin: 0px !important; 
-            padding: 0px !important; 
-        }
+        .mobile-controls { display: flex; flex-direction: row; width: 100%; gap: 8px; margin-top: 5px; }
+        .mobile-controls div[data-testid="column"] { flex: 1 1 0% !important; min-width: 0 !important; }
+        .mobile-controls button { width: 100% !important; height: 65px !important; font-size: 16px !important; font-weight: 800 !important; border-radius: 12px !important; border: none !important; text-transform: uppercase !important; margin: 0px !important; padding: 0px !important; }
 
         /* ЦВЕТА КНОПОК */
         .fold-btn button { background: #495057 !important; color: #adb5bd !important; border: 1px solid #6c757d !important; }
@@ -54,10 +33,7 @@ def show():
         .mob-mode-tag { font-size: 10px; font-weight: bold; color: #ffc107; opacity: 0.6; }
 
         /* ШПАРГАЛКА RNG */
-        .rng-hint {
-            text-align: center; font-size: 11px; color: #888; margin-bottom: 5px; font-family: monospace;
-            background: #222; padding: 4px; border-radius: 6px; border: 1px solid #333;
-        }
+        .rng-hint { text-align: center; font-size: 11px; color: #888; margin-bottom: 5px; font-family: monospace; background: #222; padding: 4px; border-radius: 6px; border: 1px solid #333; }
         .rng-arrow { color: #ffc107; font-weight: bold; }
 
         /* ЭЛЕМЕНТЫ СТОЛА */
@@ -214,7 +190,7 @@ def show():
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # --- RNG HINT (ШПАРГАЛКА) ---
+    # --- RNG HINT ---
     if is_defense_mode:
         st.markdown('<div class="rng-hint">📉 0..Freq <span class="rng-arrow">→</span> Action | 📈 Freq..100 <span class="rng-arrow">→</span> Fold</div>', unsafe_allow_html=True)
 
@@ -269,25 +245,16 @@ def show():
 
     # --- RESULT ---
     if st.session_state.srs_mode:
-        range_to_show = ""
-        if is_defense_mode:
-            target_act = correct_act
-            if target_act == "4BET": range_to_show = data.get("4bet", "")
-            elif target_act == "CALL": range_to_show = data.get("call", "")
-            else: range_to_show = data.get("call", "")
-        else:
-            range_to_show = data.get("full", "")
-
         if st.session_state.last_error:
             st.error(st.session_state.msg)
-            # Авто-открытие при ошибке
+            # Авто-показ при ошибке (Всегда показываем полную картину data)
             with st.expander(f"Show Range ({correct_act})", expanded=True):
-                st.markdown(utils.render_range_matrix(range_to_show, st.session_state.hand), unsafe_allow_html=True)
+                st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.success(st.session_state.msg)
-            # Ручное открытие при успехе
+            # Кнопка при успехе (Тоже показываем полную картину)
             with st.expander(f"🔍 View Range ({correct_act})", expanded=False):
-                st.markdown(utils.render_range_matrix(range_to_show, st.session_state.hand), unsafe_allow_html=True)
+                st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         
         st.markdown('<div class="mobile-controls srs-container">', unsafe_allow_html=True)
         s1, s2, s3 = st.columns(3)
