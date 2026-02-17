@@ -4,87 +4,58 @@ from datetime import datetime
 import utils
 
 def show():
-    # --- МОБИЛЬНЫЙ CSS ---
+    # --- CSS ---
     st.markdown("""
     <style>
-        .block-container { 
-            padding-top: 3rem !important; 
-            padding-bottom: 5rem !important; 
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-        }
-
-        /* КНОПКИ В РЯД */
-        .mobile-controls { 
-            display: flex; 
-            flex-direction: row; 
-            width: 100%; 
-            gap: 8px; 
-            margin-top: 5px; 
-        }
+        .block-container { padding-top: 3rem !important; padding-bottom: 5rem !important; }
         
-        .mobile-controls div[data-testid="column"] { 
-            flex: 1 1 0% !important; 
-            min-width: 0 !important; 
-        }
-
-        .mobile-controls button { 
-            width: 100% !important; 
-            height: 65px !important; 
-            font-size: 16px !important; 
-            font-weight: 800 !important; 
-            border-radius: 12px !important; 
-            border: none !important; 
-            text-transform: uppercase !important; 
-            margin: 0px !important; 
-            padding: 0px !important; 
-        }
-
-        /* ЦВЕТА КНОПОК */
-        .fold-btn button { background: #495057 !important; color: #adb5bd !important; border: 1px solid #6c757d !important; }
-        .call-btn button { background: #28a745 !important; color: white !important; box-shadow: 0 4px 0 #1e7e34 !important; }
-        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; } 
-        .open-raise-btn button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20 !important; }
+        /* КНОПКИ */
+        .mobile-controls { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
+        .mobile-controls div[data-testid="column"] { flex: 1; min-width: 0; }
+        .mobile-controls button { width: 100%; height: 65px; font-weight: 800; font-size: 18px; border-radius: 12px; border: none; text-transform: uppercase; }
+        .fold-btn button { background: #495057; color: #adb5bd; border: 1px solid #6c757d; }
+        .call-btn button { background: #28a745; color: white; box-shadow: 0 4px 0 #1e7e34; }
+        .raise-btn button { background: #d63384; color: white; box-shadow: 0 4px 0 #a02561; }
+        .open-raise-btn button { background: #2e7d32; color: white; box-shadow: 0 4px 0 #1b5e20; }
 
         /* СТОЛ */
-        .mobile-game-area { position: relative; width: 100%; height: 260px; margin: 0 auto 5px auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 130px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); }
-        .mob-info { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; z-index: 2; pointer-events: none; }
-        .mob-info-src { font-size: 9px; color: #888; text-transform: uppercase; }
-        .mob-info-spot { font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15); }
-        .mob-mode-tag { font-size: 10px; font-weight: bold; color: #ffc107; opacity: 0.6; }
+        .mobile-game-area { position: relative; width: 100%; height: 280px; margin: 0 auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 140px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); }
+        .mob-info { position: absolute; top: 25%; width: 100%; text-align: center; pointer-events: none; }
+        .mob-info-src { font-size: 10px; color: #888; text-transform: uppercase; }
+        .mob-info-spot { font-size: 22px; font-weight: 900; color: rgba(255,255,255,0.15); }
 
-        /* ШПАРГАЛКА RNG */
-        .rng-hint { text-align: center; font-size: 11px; color: #888; margin-bottom: 5px; font-family: monospace; background: #222; padding: 4px; border-radius: 6px; border: 1px solid #333; }
-        .rng-arrow { color: #ffc107; font-weight: bold; }
-
-        /* ЭЛЕМЕНТЫ СТОЛА */
-        .seat { position: absolute; width: 42px; height: 42px; background: #222; border: 1px solid #444; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; }
-        .seat-label { font-size: 8px; color: #fff; font-weight: bold; margin-top: auto; margin-bottom: 2px; }
+        /* МЕСТА */
+        .seat { position: absolute; width: 44px; height: 44px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; }
+        .seat-label { font-size: 9px; color: #fff; font-weight: bold; margin-top: auto; margin-bottom: 2px; }
         .seat-active { border-color: #ffc107; background: #2a2a2a; }
         .seat-folded { opacity: 0.4; border-color: #333; }
-        .opp-cards-mob { position: absolute; top: -10px; width: 22px; height: 30px; background: #fff; border-radius: 3px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); z-index: 20; box-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
-        .dealer-mob { position: absolute; width: 14px; height: 14px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 8px; display: flex; justify-content: center; align-items: center; z-index: 10; border: 1px solid #bfa006; }
-        .blind-mob { position: absolute; z-index: 9; display: flex; flex-direction: column; align-items: center; }
-        .chip-mob { width: 12px; height: 12px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
-        .chip-3bet { width: 14px; height: 14px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.6); }
+        
+        /* КООРДИНАТЫ МЕСТ */
+        .m-pos-1 { bottom: 20%; left: 5%; } .m-pos-2 { top: 20%; left: 5%; } .m-pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } 
+        .m-pos-4 { top: 20%; right: 5%; } .m-pos-5 { bottom: 20%; right: 5%; }
 
-        .m-pos-1 { bottom: 18%; left: 4%; } .m-pos-2 { top: 18%; left: 4%; } .m-pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } .m-pos-4 { top: 18%; right: 4%; } .m-pos-5 { bottom: 18%; right: 4%; }
-        
-        .hero-mob { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 30; background: #212529; padding: 4px 10px; border-radius: 10px; border: 1px solid #ffc107; }
-        .card-mob { width: 42px; height: 60px; background: white; border-radius: 4px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+        /* ФИШКИ (ВАЖНО: Z-INDEX 10) */
+        .chip-container { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        .chip-mob { width: 14px; height: 14px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
+        .chip-3bet { width: 16px; height: 16px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.8); }
+        .dealer-mob { width: 16px; height: 16px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 9px; display: flex; justify-content: center; align-items: center; border: 1px solid #bfa006; position: absolute; z-index: 11; }
+
+        /* HERO */
+        .hero-mob { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; z-index: 20; background: #222; padding: 5px 10px; border-radius: 12px; border: 1px solid #ffc107; }
+        .card-mob { width: 45px; height: 64px; background: white; border-radius: 4px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .tl-mob { position: absolute; top: 1px; left: 3px; font-weight: bold; font-size: 14px; line-height: 1; }
-        .c-mob { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 24px; }
+        .c-mob { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 26px; }
         .suit-red { color: #d32f2f; } .suit-blue { color: #0056b3; } .suit-black { color: #111; }
-        .rng-badge { position: absolute; bottom: 50px; right: -15px; width: 28px; height: 28px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%; color: white; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 40; }
+        .rng-badge { position: absolute; bottom: 50px; right: -15px; width: 30px; height: 30px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%; color: white; font-weight: bold; font-size: 12px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 40; }
         
-        .srs-container button { height: 50px !important; font-size: 13px !important; background: #343a40 !important; color: #adb5bd !important; border: 1px solid #495057 !important; box-shadow: none !important; }
+        .rng-hint { text-align: center; color: #888; font-size: 11px; margin-bottom: 5px; font-family: monospace; }
+        .srs-container button { height: 50px; font-size: 13px; background: #343a40; color: #aaa; border: 1px solid #555; }
     </style>
     """, unsafe_allow_html=True)
 
     ranges_db = utils.load_ranges()
     if not ranges_db: st.error("No ranges"); return
 
-    # --- SETTINGS ---
     with st.expander("⚙️ Settings", expanded=False):
         saved = utils.load_user_settings()
         sel_src = st.multiselect("Source", list(ranges_db.keys()), default=saved.get("sources", [list(ranges_db.keys())[0]]))
@@ -92,8 +63,7 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
         mode = st.selectbox("Positions", ["All", "Early", "Late", "Manual"], index=["All", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
-        
-        if st.button("🚀 Apply & Reset"):
+        if st.button("🚀 Apply"):
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
@@ -108,13 +78,12 @@ def show():
     if not pool: st.error("No spots"); return
     if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
-    # --- STATE ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
-    if 'msg' not in st.session_state: st.session_state.msg = None
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
     if 'last_error' not in st.session_state: st.session_state.last_error = False
+    if 'msg' not in st.session_state: st.session_state.msg = None
 
     if st.session_state.hand is None:
         chosen = random.choice(pool)
@@ -129,31 +98,28 @@ def show():
         st.session_state.rng = random.randint(0, 99)
         ps = ['♠','♥','♦','♣']; s1 = random.choice(ps)
         st.session_state.suits = [s1, s1 if 's' in st.session_state.hand else random.choice([x for x in ps if x!=s1])]
-        st.session_state.srs_mode = False; st.session_state.last_error = False
+        st.session_state.srs_mode = False
 
-    # --- CALC ---
     src, sc, sp = st.session_state.current_spot_key.split('|')
     data = ranges_db[src][sc][sp]
-    is_defense_mode = "call" in data
+    is_defense = "call" in data
     
     rng = st.session_state.rng
     correct_act = "FOLD"
-    
-    if is_defense_mode:
-        w_call = utils.get_weight(st.session_state.hand, data.get("call", ""))
-        w_4bet = utils.get_weight(st.session_state.hand, data.get("4bet", ""))
-        if rng < w_4bet: correct_act = "4BET"
-        elif rng < (w_4bet + w_call): correct_act = "CALL"
+    if is_defense:
+        w_c = utils.get_weight(st.session_state.hand, data.get("call", ""))
+        w_4 = utils.get_weight(st.session_state.hand, data.get("4bet", ""))
+        if rng < w_4: correct_act = "4BET"
+        elif rng < (w_4 + w_c): correct_act = "CALL"
     else:
-        full_r = data.get("full", "")
-        w = utils.get_weight(st.session_state.hand, full_r)
+        w = utils.get_weight(st.session_state.hand, data.get("full", ""))
         if w > 0: correct_act = "RAISE"
-    
-    # --- RENDER ---
+
     h_val = st.session_state.hand; s1, s2 = st.session_state.suits
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
+    # --- TABLE LOGIC ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -176,34 +142,44 @@ def show():
 
     opp_html = ""; chips_html = ""
     def get_pos_style(idx):
-        return {0: "bottom:25%;left:47%;", 1: "bottom:25%;left:22%;", 2: "top:25%;left:22%;", 3: "top:10%;left:47%;", 4: "top:25%;right:22%;", 5: "bottom:25%;right:22%;"}.get(idx, "")
+        # Координаты фишек: сдвинуты ближе к центру стола относительно мест
+        return {0: "bottom:28%;left:47%;", 1: "bottom:28%;left:22%;", 2: "top:28%;left:22%;", 
+                3: "top:12%;left:47%;", 4: "top:28%;right:22%;", 5: "bottom:28%;right:22%;"}.get(idx, "")
+    
+    def get_btn_style(idx):
+        return {0: "bottom:25%;left:55%;", 1: "bottom:25%;left:18%;", 2: "top:25%;left:18%;", 
+                3: "top:10%;left:55%;", 4: "top:25%;right:18%;", 5: "bottom:25%;right:18%;"}.get(idx, "")
 
     for i in range(1, 6):
         p = rot[i]
-        is_active = False; c_type = "none"
+        is_act = False; c_type = "none"
+        
         if is_3bet_pot:
-            if p == villain_pos:
-                is_active = True; c_type = "3bet"
-            # ФИКС: Если игрок - блайнд, рисуем фишку даже если он не злодей
-            elif p in ["SB", "BB"]:
-                c_type = "blind"
+            if p == villain_pos: is_act = True; c_type = "3bet"
+            elif p in ["SB", "BB"]: c_type = "blind" # ФИКС: Всегда рисуем блайнды
         else:
             if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"):
-                is_active = True; c_type = "blind" if p in ["SB","BB"] else "none"
+                is_act = True; c_type = "blind" if p in ["SB","BB"] else "none"
         
-        cls = "seat-active" if is_active else "seat-folded"
-        cards = '<div class="opp-cards-mob"></div>' if is_active else ""
+        cls = "seat-active" if is_act else "seat-folded"
+        cards = '<div class="opp-cards-mob"></div>' if is_act else ""
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
         
         s = get_pos_style(i)
-        if c_type == "blind": chips_html += f'<div class="blind-mob" style="{s}"><div class="chip-mob"></div></div>'
-        elif c_type == "3bet": chips_html += f'<div class="blind-mob" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-10px"></div><div class="chip-3bet" style="margin-top:-10px"></div></div>'
-        if p == "BTN": chips_html += f'<div class="dealer-mob" style="{s}">D</div>'
+        if c_type == "blind": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-mob"></div></div>'
+        elif c_type == "3bet": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-12px;"></div><div class="chip-3bet" style="margin-top:-12px;"></div></div>'
+        
+        if p == "BTN":
+            bs = get_btn_style(i)
+            chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
+    # HERO CHIPS
     hs = get_pos_style(0)
-    if is_3bet_pot: chips_html += f'<div class="blind-mob" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px"></div></div>'
-    elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="blind-mob" style="{hs}"><div class="chip-mob"></div></div>'
-    if rot[0] == "BTN": chips_html += f'<div class="dealer-mob" style="{hs}">D</div>'
+    if is_3bet_pot: chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px;"></div></div>'
+    elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div></div>'
+    if rot[0] == "BTN": 
+        bs = get_btn_style(0)
+        chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
     html = f"""
     <div class="mobile-game-area">
@@ -218,60 +194,52 @@ def show():
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # --- RNG HINT ---
-    if is_defense_mode:
-        st.markdown('<div class="rng-hint">📉 0..Freq <span class="rng-arrow">→</span> Action | 📈 Freq..100 <span class="rng-arrow">→</span> Fold</div>', unsafe_allow_html=True)
+    if is_defense:
+        st.markdown('<div class="rng-hint">📉 0..Freq → Action | 📈 Freq..100 → Fold</div>', unsafe_allow_html=True)
 
-    # --- BUTTONS ---
     st.markdown('<div class="mobile-controls">', unsafe_allow_html=True)
     if not st.session_state.srs_mode:
-        if is_defense_mode:
+        if is_defense:
             c1, c2, c3 = st.columns(3)
             with c1:
                 if st.button("FOLD", key="f", use_container_width=True):
-                    is_c = (correct_act == "FOLD")
-                    st.session_state.last_error = not is_c
-                    st.session_state.msg = f"✅ Correct" if is_c else f"❌ Err! RNG {rng} -> {correct_act}"
-                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    corr = (correct_act == "FOLD")
+                    st.session_state.last_error = not corr
+                    st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                     st.session_state.srs_mode = True; st.rerun()
-                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(1) button").classList.add("fold-btn");</script>', unsafe_allow_html=True)
+                st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[0].classList.add("fold-btn");</script>', unsafe_allow_html=True)
             with c2:
                 if st.button("CALL", key="c", use_container_width=True):
-                    is_c = (correct_act == "CALL")
-                    st.session_state.last_error = not is_c
-                    st.session_state.msg = f"✅ Correct" if is_c else f"❌ Err! RNG {rng} -> {correct_act}"
-                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    corr = (correct_act == "CALL")
+                    st.session_state.last_error = not corr
+                    st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                     st.session_state.srs_mode = True; st.rerun()
-                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(2) button").classList.add("call-btn");</script>', unsafe_allow_html=True)
+                st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[1].classList.add("call-btn");</script>', unsafe_allow_html=True)
             with c3:
                 if st.button("4BET", key="r", use_container_width=True):
-                    is_c = (correct_act == "4BET")
-                    st.session_state.last_error = not is_c
-                    st.session_state.msg = f"✅ Correct" if is_c else f"❌ Err! RNG {rng} -> {correct_act}"
-                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    corr = (correct_act == "4BET")
+                    st.session_state.last_error = not corr
+                    st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                     st.session_state.srs_mode = True; st.rerun()
-                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(3) button").classList.add("raise-btn");</script>', unsafe_allow_html=True)
+                st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[2].classList.add("raise-btn");</script>', unsafe_allow_html=True)
         else:
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("FOLD", key="f", use_container_width=True):
-                    is_c = (correct_act == "FOLD")
-                    st.session_state.last_error = not is_c
-                    st.session_state.msg = "✅ Correct" if is_c else "❌ Should be RAISE"
-                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    corr = (correct_act == "FOLD")
+                    st.session_state.last_error = not corr
+                    st.session_state.msg = "✅ Correct" if corr else "❌ Err"
                     st.session_state.srs_mode = True; st.rerun()
-                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(1) button").classList.add("fold-btn");</script>', unsafe_allow_html=True)
+                st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[0].classList.add("fold-btn");</script>', unsafe_allow_html=True)
             with c2:
                 if st.button("RAISE", key="r", use_container_width=True):
-                    is_c = (correct_act == "RAISE")
-                    st.session_state.last_error = not is_c
-                    st.session_state.msg = "✅ Correct" if is_c else "❌ Should be FOLD"
-                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    corr = (correct_act == "RAISE")
+                    st.session_state.last_error = not corr
+                    st.session_state.msg = "✅ Correct" if corr else "❌ Err"
                     st.session_state.srs_mode = True; st.rerun()
-                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(2) button").classList.add("open-raise-btn");</script>', unsafe_allow_html=True)
+                st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[1].classList.add("open-raise-btn");</script>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- RESULT ---
     if st.session_state.srs_mode:
         if st.session_state.last_error:
             st.error(st.session_state.msg)
