@@ -9,12 +9,12 @@ def show():
     st.markdown("""
     <style>
         .stApp { background-color: #212529; color: #e9ecef; }
-        .block-container { padding-top: 3rem; }
+        .block-container { padding-top: 4rem; }
 
         /* СТОЛ (RACETRACK) */
         .game-area { 
             position: relative; width: 100%; max-width: 700px; height: 380px; 
-            margin: 0 auto; /* Убрал margin-bottom, будем регулировать отступами ниже */
+            margin: 0 auto; 
             background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%); 
             border: 15px solid #4a1c1c; border-radius: 200px; 
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); 
@@ -31,13 +31,13 @@ def show():
         .seat-folded { opacity: 0.4; border-color: #212529; }
         .seat-label { color: #fff; font-weight: bold; font-size: 11px; margin-top: 15px; }
         
-        /* КАРТЫ ОППОНЕНТОВ */
+        /* КАРТЫ */
         .opp-cards { position: absolute; top: -12px; width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); box-shadow: 1px 1px 3px rgba(0,0,0,0.5); z-index: 4; }
         
-        /* ФИШКИ (СЛОЙ Z-10 ПОВЕРХ МЕСТ) */
-        .chip-container { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        /* ФИШКИ (ВАЖНО: Z-INDEX ВЫШЕ МЕСТ) */
+        .blind-stack { position: absolute; z-index: 15; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .poker-chip { width: 22px; height: 22px; background: #222; border: 3px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
-        .chip-3bet { width: 24px; height: 24px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.6); }
+        .chip-3bet-desk { width: 24px; height: 24px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.6); }
         .dealer-button { width: 24px; height: 24px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; z-index: 15; position: absolute; border: 1px solid #bfa006; }
 
         .pos-1 { bottom: 20%; left: 10%; } .pos-2 { top: 20%; left: 10%; } .pos-3 { top: -30px; left: 50%; transform: translateX(-50%); } 
@@ -50,37 +50,20 @@ def show():
         .cent { position: absolute; top: 55%; left: 50%; transform: translate(-50%,-50%); font-size: 26px; }
         .suit-red { color: #d32f2f; } .suit-blue { color: #0056b3; } .suit-black { color: #212529; }
         
-        .rng-desktop {
-            position: absolute; right: -50px; top: 15px;
-            width: 40px; height: 40px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%;
-            color: white; font-weight: bold; font-size: 16px;
-            display: flex; justify-content: center; align-items: center;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.6);
-        }
-
-        /* ШПАРГАЛКА RNG */
-        .rng-hint-box {
-            text-align: center; color: #888; font-size: 13px; font-family: monospace;
-            margin-top: 60px; /* Отступ чтобы не перекрывалось картами */
-            margin-bottom: 10px;
-            background: #2b2b2b; padding: 5px; border-radius: 6px; border: 1px solid #444; width: 100%;
-        }
+        .rng-desktop { position: absolute; right: -50px; top: 15px; width: 40px; height: 40px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%; color: white; font-weight: bold; font-size: 16px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.6); }
+        .rng-hint-box { text-align: center; color: #888; font-size: 13px; font-family: monospace; margin-top: 60px; margin-bottom: 10px; background: #2b2b2b; padding: 5px; border-radius: 6px; border: 1px solid #444; width: 100%; }
 
         /* КНОПКИ */
         div.stButton > button { width: 100%; height: 60px !important; font-size: 18px !important; font-weight: 700; border-radius: 8px; border: none; text-transform: uppercase; transition: all 0.2s; }
-        
         .fold-btn button { background: #495057 !important; color: #adb5bd !important; border: 1px solid #6c757d !important; }
         .fold-btn button:hover { background: #343a40 !important; }
-        
         .call-btn button { background: #28a745 !important; color: white !important; box-shadow: 0 4px 0 #1e7e34 !important; }
         .call-btn button:hover { background: #218838 !important; }
-        
-        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; } /* Magenta 4Bet */
+        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; }
         .raise-btn button:hover { background: #c2185b !important; }
-        
         .open-raise-btn button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20 !important; }
 
-        /* СТАТИСТИКА (LEFT COLUMN) */
+        /* СТАТИСТИКА */
         .stats-box { background: #343a40; padding: 15px; border-radius: 8px; border-left: 4px solid #ffc107; margin-bottom: 20px; }
         .stat-val { color: #fff; font-size: 24px; font-weight: bold; }
         .hist-row { font-family: monospace; font-size: 14px; margin-bottom: 6px; border-bottom: 1px solid #444; padding-bottom: 4px; display: flex; justify-content: space-between; }
@@ -92,11 +75,10 @@ def show():
     ranges_db = utils.load_ranges()
     if not ranges_db: st.error("No ranges found"); return
     
-    # --- SETTINGS (SIDEBAR) ---
+    # --- SIDEBAR ---
     with st.sidebar:
         st.header("Settings")
         saved = utils.load_user_settings()
-        
         sel_src = st.multiselect("Source", list(ranges_db.keys()), default=saved.get("sources", [list(ranges_db.keys())[0]]))
         avail_sc = set()
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
@@ -113,12 +95,10 @@ def show():
                             pool.append(f"{src}|{sc}|{sp}")
         
         if mode == "Manual" and pool: sp_man = st.selectbox("Spot", pool); pool = [sp_man]
-            
         if st.button("Apply & Reset", type="primary"):
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
-    # --- STATE ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
@@ -128,7 +108,6 @@ def show():
 
     if not pool: st.error("No spots available"); return
 
-    # --- GENERATION ---
     if st.session_state.hand is None:
         chosen = random.choice(pool)
         st.session_state.current_spot_key = chosen
@@ -144,14 +123,12 @@ def show():
         st.session_state.suits = [s1, s1 if 's' in st.session_state.hand else random.choice([x for x in ps if x!=s1])]
         st.session_state.srs_mode = False; st.session_state.last_error = False
 
-    # --- LOGIC ---
     src, sc, sp = st.session_state.current_spot_key.split('|')
     data = ranges_db[src][sc][sp]
     is_defense_mode = "call" in data
     
     rng = st.session_state.rng
     correct_act = "FOLD"
-    
     if is_defense_mode:
         w_call = utils.get_weight(st.session_state.hand, data.get("call", ""))
         w_4bet = utils.get_weight(st.session_state.hand, data.get("4bet", ""))
@@ -165,10 +142,9 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
-    # --- UI LAYOUT ---
     col_left, col_center, col_right = st.columns([1, 2, 1])
 
-    # LEFT: STATISTICS (ВЕРНУЛ ОБРАТНО)
+    # LEFT: STATS
     with col_left:
         st.markdown("### Session Stats")
         df = utils.load_history()
@@ -222,42 +198,41 @@ def show():
 
         opp_html = ""; chips_html = ""
         def get_pos_style(idx):
-            # Фишки немного дальше от мест, чтобы не перекрывались
-            return {0: "bottom:28%;left:48%;", 1: "bottom:32%;left:25%;", 2: "top:32%;left:25%;", 
-                    3: "top:18%;left:48%;", 4: "top:32%;right:25%;", 5: "bottom:32%;right:25%;"}.get(idx, "")
-        def get_btn_style(idx):
-            return {0: "bottom:25%;left:55%;", 1: "bottom:28%;left:18%;", 2: "top:28%;left:18%;", 
-                    3: "top:15%;left:55%;", 4: "top:28%;right:18%;", 5: "bottom:28%;right:18%;"}.get(idx, "")
+            return {0: "bottom:25%;left:48%;", 1: "bottom:28%;left:25%;", 2: "top:28%;left:25%;", 
+                    3: "top:15%;left:48%;", 4: "top:28%;right:25%;", 5: "bottom:28%;right:25%;"}.get(idx, "")
 
         for i in range(1, 6):
             p = rot[i]
             is_active = False; c_type = "none"
+            
             if is_3bet_pot:
-                if p == villain_pos: is_active=True; c_type="3bet"
-                elif p in ["SB", "BB"]: c_type = "blind"
+                if p == villain_pos: is_active = True; c_type = "3bet"
+                elif p in ["SB", "BB"]: c_type = "blind" # Мертвые деньги
             else:
-                if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"): is_active=True; c_type="blind" if p in ["SB","BB"] else "none"
+                if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"):
+                    is_active = True; c_type = "blind" if p in ["SB","BB"] else "none"
             
             cls = "seat-active" if is_active else "seat-folded"
             cards = '<div class="opp-cards"></div>' if is_active else ""
             opp_html += f'<div class="seat pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
             
             s = get_pos_style(i)
-            if c_type == "blind": chips_html += f'<div class="chip-container" style="{s}"><div class="poker-chip"></div></div>'
-            elif c_type == "3bet": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet-desk"></div><div class="chip-3bet-desk" style="margin-top:-15px;"></div></div>'
-            if p == "BTN":
-                bs = get_btn_style(i)
-                chips_html += f'<div class="dealer-button" style="{bs}">D</div>'
+            if c_type == "blind": chips_html += f'<div class="blind-stack" style="{s}"><div class="poker-chip"></div></div>'
+            elif c_type == "3bet": 
+                # 3 ФИШКИ ДЛЯ 3-БЕТТОРА (БОЛЬШОЙ СТЕК)
+                chips_html += f'<div class="blind-stack" style="{s}"><div class="chip-3bet-desk"></div><div class="chip-3bet-desk" style="margin-top:-15px;"></div><div class="chip-3bet-desk" style="margin-top:-15px;"></div></div>'
+            
+            if p == "BTN": chips_html += f'<div class="dealer-button" style="{s}">D</div>'
 
         hs = get_pos_style(0)
-        if is_3bet_pot: chips_html += f'<div class="chip-container" style="{hs}"><div class="poker-chip"></div><div class="poker-chip" style="margin-top:-10px"></div></div>'
-        elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="chip-container" style="{hs}"><div class="poker-chip"></div></div>'
-        if rot[0] == "BTN":
-            bs = get_btn_style(0)
-            chips_html += f'<div class="dealer-button" style="{bs}">D</div>'
+        if is_3bet_pot: 
+            # 2 ФИШКИ ДЛЯ ХИРО (OPEN RAISE)
+            chips_html += f'<div class="blind-stack" style="{hs}"><div class="poker-chip"></div><div class="poker-chip" style="margin-top:-10px"></div></div>'
+        elif rot[0] in ["SB", "BB"]: 
+            chips_html += f'<div class="blind-stack" style="{hs}"><div class="poker-chip"></div></div>'
+        if rot[0] == "BTN": chips_html += f'<div class="dealer-button" style="{hs}">D</div>'
 
         mode_tag = "TRAINING MODE" if "training" in data or "source" in data else "FULL RANGE"
-        
         html = f"""
         <div class="game-area">
             <div class="table-info"><div class="info-src">{src} • {sc}</div><div class="info-spot">{sp}</div><div class="mode-tag">{mode_tag}</div></div>
@@ -272,13 +247,12 @@ def show():
         """
         st.markdown(html, unsafe_allow_html=True)
 
-        # ШПАРГАЛКА СНИЗУ (Чтобы карты не закрывали)
         if is_defense_mode:
             st.markdown('<div class="rng-hint-box">📉 0..Freq → Action (4B/Call) | 📈 Freq..100 → Fold</div>', unsafe_allow_html=True)
         else:
-            st.markdown("<div style='height:30px;'></div>", unsafe_allow_html=True) # Spacer
+            st.markdown("<div style='height:30px;'></div>", unsafe_allow_html=True)
 
-        # ACTION BUTTONS
+        # BUTTONS
         if not st.session_state.srs_mode:
             if is_defense_mode:
                 c1, c2, c3 = st.columns(3)
@@ -335,7 +309,7 @@ def show():
     # RIGHT: MATRIX
     with col_right:
         if st.session_state.srs_mode:
-            st.markdown(f"**{sp}** Range")
+            st.markdown(f"**{sp}** Range ({correct_act})")
             st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.markdown("<div style='text-align:center;color:#555;margin-top:150px;'>Matrix hidden</div>", unsafe_allow_html=True)
