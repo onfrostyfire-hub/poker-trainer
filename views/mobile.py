@@ -4,10 +4,10 @@ from datetime import datetime
 import utils
 
 def show():
-    # --- МОБИЛЬНЫЙ CSS (ULTIMATE FIX) ---
+    # --- МОБИЛЬНЫЙ CSS (ФИКС КНОПОК) ---
     st.markdown("""
     <style>
-        /* Отступы, чтобы не лезло под элементы интерфейса айфона */
+        /* Отступы сверху */
         .block-container { 
             padding-top: 3.5rem !important; 
             padding-bottom: 2rem !important;
@@ -15,21 +15,23 @@ def show():
             padding-right: 0.5rem !important;
         }
 
-        /* ПРИНУДИТЕЛЬНО В РЯД (Запрет переноса колонок) */
+        /* === ГЛАВНЫЙ ФИКС ДЛЯ КНОПОК В РЯД === */
+        /* Заставляем контейнер колонок быть всегда горизонтальным */
         div[data-testid="stHorizontalBlock"] {
             flex-direction: row !important;
             flex-wrap: nowrap !important;
-            gap: 4px !important;
-            justify-content: center !important;
+            gap: 8px !important;
+            width: 100% !important;
         }
         
+        /* Заставляем колонки не исчезать и делить место поровну */
         div[data-testid="column"] {
+            flex: 1 1 auto !important;
             width: auto !important;
-            flex: 1 1 0% !important;
-            min-width: 0px !important;
+            min-width: 60px !important; /* Минимальная ширина, чтобы кнопка не пропала */
         }
 
-        /* КНОПКИ ДЕЙСТВИЙ */
+        /* ОБЩИЙ СТИЛЬ КНОПОК ДЕЙСТВИЙ */
         div.stButton > button { 
             width: 100%; 
             height: 65px !important; 
@@ -39,11 +41,17 @@ def show():
             border: none; 
             text-transform: uppercase; 
             margin: 0px !important;
+            white-space: nowrap; /* Текст в одну строку */
+            padding: 0 5px !important; /* Уменьшаем внутренние отступы */
         }
         
-        /* Цвета кнопок */
-        div[data-testid="column"]:nth-of-type(1) div.stButton > button { background: #c62828 !important; color: white !important; box-shadow: 0 4px 0 #8e0000; }
-        div[data-testid="column"]:nth-of-type(2) div.stButton > button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20; }
+        /* Цвета для FOLD/RAISE (Применяются только к первой паре кнопок) */
+        .fold-raise-buttons div[data-testid="column"]:nth-of-type(1) div.stButton > button { 
+            background: #c62828 !important; color: white !important; box-shadow: 0 4px 0 #8e0000; 
+        }
+        .fold-raise-buttons div[data-testid="column"]:nth-of-type(2) div.stButton > button { 
+            background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20; 
+        }
         
         /* СТОЛ */
         .mobile-game-area { 
@@ -52,8 +60,6 @@ def show():
             border: 6px solid #3e2723; border-radius: 130px; 
             box-shadow: 0 4px 10px rgba(0,0,0,0.8);
         }
-        
-        /* ИНФО ВНУТРИ */
         .mob-info { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; z-index: 2; }
         .mob-info-src { font-size: 9px; color: #888; text-transform: uppercase; }
         .mob-info-spot { font-size: 22px; font-weight: 900; color: rgba(255,255,255,0.12); }
@@ -64,14 +70,12 @@ def show():
         .seat-folded { opacity: 0.3; }
         .seat-active { border-color: #ffc107; }
         .opp-cards-mob { position: absolute; top: -6px; width: 18px; height: 26px; background: #fff; border-radius: 2px; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); z-index: 4; }
-        
-        /* ФИШКИ НА МОБИЛЬНОМ СТОЛЕ */
         .dealer-mob { position: absolute; width: 14px; height: 14px; background: #ffc107; border: 1px solid #e0a800; border-radius: 50%; color: #000; font-weight: bold; font-size: 8px; display: flex; justify-content: center; align-items: center; z-index: 10; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
         .poker-chip-mob { width: 12px; height: 12px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
         .blind-stack-mob { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; }
         .chip-stacked-mob { margin-top: -10px; }
 
-        /* КООРДИНАТЫ МЕСТ */
+        /* КООРДИНАТЫ */
         .m-pos-1 { bottom: 18%; left: 4%; } .m-pos-2 { top: 18%; left: 4%; } 
         .m-pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } 
         .m-pos-4 { top: 18%; right: 4%; } .m-pos-5 { bottom: 18%; right: 4%; }
@@ -97,7 +101,6 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=list(avail_sc)[:1])
         mode = st.selectbox("Positions", ["All", "Early", "Late", "Manual"])
-        
         pool = []
         for src in sel_src:
             for sc in sel_sc:
@@ -109,7 +112,6 @@ def show():
                         elif mode=="Early": m=any(x in u for x in ["EP","UTG","MP"])
                         elif mode=="Late": m=any(x in u for x in ["CO","BU","BTN","SB"])
                         if m or mode=="Manual": pool.append(f"{src}|{sc}|{sp}")
-        
         if not pool: st.error("No spots"); return
         if mode == "Manual":
             sel_manual = st.selectbox("Spot", pool)
@@ -152,7 +154,7 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
-    # --- ЛОГИКА МЕСТ ДЛЯ ФИШЕК ---
+    # --- СТОЛ И ФИШКИ ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0
     u = sp.upper()
@@ -190,7 +192,6 @@ def show():
         elif pos == "SB": table_chips += f'<div class="blind-stack-mob" style="{style}"><div class="poker-chip-mob"></div></div>'
         elif pos == "BB": table_chips += f'<div class="blind-stack-mob" style="{style}"><div class="poker-chip-mob"></div><div class="poker-chip-mob chip-stacked-mob"></div></div>'
 
-    # Hero chip
     h_style = get_mob_chip_style(0)
     if rot[0] == "BTN": table_chips += f'<div class="dealer-mob" style="{h_style}">D</div>'
     elif rot[0] == "SB": table_chips += f'<div class="blind-stack-mob" style="{h_style}"><div class="poker-chip-mob"></div></div>'
@@ -209,7 +210,9 @@ def show():
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # --- КНОПКИ ---
+    # --- КНОПКИ (В РЯД) ---
+    # Оборачиваем в контейнер, чтобы применить к ним специфичные стили (цвета)
+    st.markdown('<div class="fold-raise-buttons">', unsafe_allow_html=True)
     if not st.session_state.srs_mode:
         c1, c2 = st.columns(2)
         with c1:
@@ -228,15 +231,27 @@ def show():
                 hf = f"{h_val[0]}{s1}{h_val[1]}{s2}"
                 utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": hf, "Result": 1 if corr else 0, "CorrectAction": "Raise" if ans_w>0 else "Fold"})
                 st.session_state.srs_mode = True; st.rerun()
-    else:
+    st.markdown('</div>', unsafe_allow_html=True) # Закрываем контейнер
+
+    if st.session_state.srs_mode:
         st.info(st.session_state.msg)
         if st.session_state.last_error:
             with st.expander("Show Range", expanded=True):
                 st.markdown(utils.render_range_matrix(full_r, target_hand=st.session_state.hand), unsafe_allow_html=True)
         
-        st.markdown("""<style>div[data-testid="column"] div.stButton > button { height: 50px !important; background: #343a40 !important; font-size: 13px !important; box-shadow: none !important; border: 1px solid #555; }</style>""", unsafe_allow_html=True)
+        # Переопределяем стили для SRS кнопок (они тоже должны быть в ряд, но серые)
+        st.markdown("""
+        <style>
+            .srs-buttons div.stButton > button { 
+                height: 60px !important; background: #343a40 !important; font-size: 14px !important; box-shadow: none !important; border: 1px solid #555; color: #ddd !important;
+            }
+        </style>
+        """, unsafe_allow_html=True)
+        
+        st.markdown('<div class="srs-buttons">', unsafe_allow_html=True)
         s1, s2, s3 = st.columns(3)
         k = f"{src}_{sc}_{sp}".replace(" ","_")
         if s1.button("HARD"): utils.update_srs_smart(k, st.session_state.hand, 'hard'); st.session_state.hand = None; st.rerun()
         if s2.button("NORMAL"): utils.update_srs_smart(k, st.session_state.hand, 'normal'); st.session_state.hand = None; st.rerun()
         if s3.button("EASY"): utils.update_srs_smart(k, st.session_state.hand, 'easy'); st.session_state.hand = None; st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
