@@ -15,9 +15,30 @@ def show():
         }
 
         /* КНОПКИ В РЯД */
-        .mobile-controls { display: flex; flex-direction: row; width: 100%; gap: 8px; margin-top: 5px; }
-        .mobile-controls div[data-testid="column"] { flex: 1 1 0% !important; min-width: 0 !important; }
-        .mobile-controls button { width: 100% !important; height: 65px !important; font-size: 16px !important; font-weight: 800 !important; border-radius: 12px !important; border: none !important; text-transform: uppercase !important; margin: 0px !important; padding: 0px !important; }
+        .mobile-controls { 
+            display: flex; 
+            flex-direction: row; 
+            width: 100%; 
+            gap: 8px; 
+            margin-top: 5px; 
+        }
+        
+        .mobile-controls div[data-testid="column"] { 
+            flex: 1 1 0% !important; 
+            min-width: 0 !important; 
+        }
+
+        .mobile-controls button { 
+            width: 100% !important; 
+            height: 65px !important; 
+            font-size: 16px !important; 
+            font-weight: 800 !important; 
+            border-radius: 12px !important; 
+            border: none !important; 
+            text-transform: uppercase !important; 
+            margin: 0px !important; 
+            padding: 0px !important; 
+        }
 
         /* ЦВЕТА КНОПОК */
         .fold-btn button { background: #495057 !important; color: #adb5bd !important; border: 1px solid #6c757d !important; }
@@ -161,12 +182,19 @@ def show():
         p = rot[i]
         is_active = False; c_type = "none"
         if is_3bet_pot:
-            if p == villain_pos: is_active=True; c_type="3bet"
+            if p == villain_pos:
+                is_active = True; c_type = "3bet"
+            # ФИКС: Если игрок - блайнд, рисуем фишку даже если он не злодей
+            elif p in ["SB", "BB"]:
+                c_type = "blind"
         else:
-            if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"): is_active=True; c_type="blind" if p in ["SB","BB"] else "none"
+            if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"):
+                is_active = True; c_type = "blind" if p in ["SB","BB"] else "none"
+        
         cls = "seat-active" if is_active else "seat-folded"
         cards = '<div class="opp-cards-mob"></div>' if is_active else ""
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
+        
         s = get_pos_style(i)
         if c_type == "blind": chips_html += f'<div class="blind-mob" style="{s}"><div class="chip-mob"></div></div>'
         elif c_type == "3bet": chips_html += f'<div class="blind-mob" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-10px"></div><div class="chip-3bet" style="margin-top:-10px"></div></div>'
@@ -247,12 +275,10 @@ def show():
     if st.session_state.srs_mode:
         if st.session_state.last_error:
             st.error(st.session_state.msg)
-            # Авто-показ при ошибке (Всегда показываем полную картину data)
             with st.expander(f"Show Range ({correct_act})", expanded=True):
                 st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.success(st.session_state.msg)
-            # Кнопка при успехе (Тоже показываем полную картину)
             with st.expander(f"🔍 View Range ({correct_act})", expanded=False):
                 st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         
