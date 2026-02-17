@@ -4,7 +4,7 @@ from datetime import datetime
 import utils
 
 def show():
-    # --- МОБИЛЬНЫЙ CSS (ФИНАЛЬНАЯ СБОРКА) ---
+    # --- МОБИЛЬНЫЙ CSS ---
     st.markdown("""
     <style>
         .block-container { 
@@ -14,7 +14,7 @@ def show():
             padding-right: 0.5rem !important;
         }
 
-        /* === КНОПКИ В РЯД (ЖЕЛЕЗОБЕТОННО) === */
+        /* КНОПКИ В РЯД */
         .mobile-controls { 
             display: flex; 
             flex-direction: row; 
@@ -43,8 +43,8 @@ def show():
         /* ЦВЕТА КНОПОК */
         .fold-btn button { background: #495057 !important; color: #adb5bd !important; border: 1px solid #6c757d !important; }
         .call-btn button { background: #28a745 !important; color: white !important; box-shadow: 0 4px 0 #1e7e34 !important; }
-        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; } /* Малиновый для 4Bet */
-        .open-raise-btn button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20 !important; } /* Зеленый для Open Raise */
+        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; } 
+        .open-raise-btn button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20 !important; }
 
         /* СТОЛ */
         .mobile-game-area { position: relative; width: 100%; height: 260px; margin: 0 auto 10px auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 130px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); }
@@ -123,7 +123,6 @@ def show():
         src, sc, sp = chosen.split('|')
         data = ranges_db[src][sc][sp]
         
-        # Берем источник рук: либо source (Def), либо training/full (Open Raise)
         t_range = data.get("source", data.get("training", data.get("full", "")))
         poss = utils.parse_range_to_list(t_range)
         srs = utils.load_srs_data()
@@ -135,12 +134,11 @@ def show():
         st.session_state.suits = [s1, s1 if 's' in st.session_state.hand else random.choice([x for x in ps if x!=s1])]
         st.session_state.srs_mode = False; st.session_state.last_error = False
 
-    # --- CALC CORRECT ACTION ---
+    # --- CALC ---
     src, sc, sp = st.session_state.current_spot_key.split('|')
     data = ranges_db[src][sc][sp]
     
-    # Проверяем, какой это тип тренировки
-    is_defense_mode = "call" in data # Если есть поле 'call', значит это защита (3 кнопки)
+    is_defense_mode = "call" in data
     
     rng = st.session_state.rng
     correct_act = "FOLD"
@@ -148,16 +146,14 @@ def show():
     if is_defense_mode:
         w_call = utils.get_weight(st.session_state.hand, data.get("call", ""))
         w_4bet = utils.get_weight(st.session_state.hand, data.get("4bet", ""))
-        # Logic: 0..w4 -> 4Bet, w4..w4+wc -> Call, else Fold
         if rng < w_4bet: correct_act = "4BET"
         elif rng < (w_4bet + w_call): correct_act = "CALL"
     else:
-        # Open Raise Mode
         full_r = data.get("full", "")
         w = utils.get_weight(st.session_state.hand, full_r)
         if w > 0: correct_act = "RAISE"
     
-    # --- RENDER TABLE ---
+    # --- RENDER ---
     h_val = st.session_state.hand; s1, s2 = st.session_state.suits
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
@@ -221,12 +217,11 @@ def show():
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # --- BUTTONS RENDER ---
+    # --- BUTTONS ---
     st.markdown('<div class="mobile-controls">', unsafe_allow_html=True)
-    
     if not st.session_state.srs_mode:
         if is_defense_mode:
-            # === 3 BUTTONS (FOLD, CALL, 4BET) ===
+            # 3 BUTTONS
             c1, c2, c3 = st.columns(3)
             with c1:
                 if st.button("FOLD", key="f", use_container_width=True):
@@ -253,7 +248,7 @@ def show():
                     st.session_state.srs_mode = True; st.rerun()
                 st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(3) button").classList.add("raise-btn");</script>', unsafe_allow_html=True)
         else:
-            # === 2 BUTTONS (OPEN RAISE MODE) ===
+            # 2 BUTTONS
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("FOLD", key="f", use_container_width=True):
@@ -271,26 +266,32 @@ def show():
                     utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
                     st.session_state.srs_mode = True; st.rerun()
                 st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(2) button").classList.add("open-raise-btn");</script>', unsafe_allow_html=True)
-
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- RESULT & ERROR VISUALIZATION ---
+    # --- RESULT ---
     if st.session_state.srs_mode:
+        # Логика показа матрицы
+        range_to_show = ""
+        if is_defense_mode:
+            # Если была ошибка - показываем рендж ПРАВИЛЬНОГО действия
+            # Если было верно - показываем рендж СЫГРАННОГО действия (или правильного, т.к. они совпали)
+            target_act = correct_act
+            if target_act == "4BET": range_to_show = data.get("4bet", "")
+            elif target_act == "CALL": range_to_show = data.get("call", "")
+            else: range_to_show = data.get("call", "") # Для фолда показываем колл как референс
+        else:
+            range_to_show = data.get("full", "")
+
         if st.session_state.last_error:
             st.error(st.session_state.msg)
-            # ВАЖНО: Показываем матрицу того действия, которое было ПРАВИЛЬНЫМ
+            # Авто-открытие при ошибке
             with st.expander(f"Show Range ({correct_act})", expanded=True):
-                range_to_show = ""
-                if is_defense_mode:
-                    if correct_act == "4BET": range_to_show = data.get("4bet", "")
-                    elif correct_act == "CALL": range_to_show = data.get("call", "")
-                    else: range_to_show = data.get("call", "") # Если фолд, покажем колл для ориентира
-                else:
-                    range_to_show = data.get("full", "")
-                
                 st.markdown(utils.render_range_matrix(range_to_show, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.success(st.session_state.msg)
+            # Ручное открытие при успехе
+            with st.expander(f"🔍 View Range ({correct_act})", expanded=False):
+                st.markdown(utils.render_range_matrix(range_to_show, st.session_state.hand), unsafe_allow_html=True)
         
         st.markdown('<div class="mobile-controls srs-container">', unsafe_allow_html=True)
         s1, s2, s3 = st.columns(3)
