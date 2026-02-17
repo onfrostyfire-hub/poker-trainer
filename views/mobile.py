@@ -20,7 +20,7 @@ def show():
             flex-direction: row; 
             width: 100%; 
             gap: 8px; 
-            margin-top: 10px; 
+            margin-top: 5px; 
         }
         
         .mobile-controls div[data-testid="column"] { 
@@ -47,11 +47,18 @@ def show():
         .open-raise-btn button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20 !important; }
 
         /* СТОЛ */
-        .mobile-game-area { position: relative; width: 100%; height: 260px; margin: 0 auto 10px auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 130px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); }
+        .mobile-game-area { position: relative; width: 100%; height: 260px; margin: 0 auto 5px auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 130px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); }
         .mob-info { position: absolute; top: 22%; left: 50%; transform: translateX(-50%); text-align: center; width: 100%; z-index: 2; pointer-events: none; }
         .mob-info-src { font-size: 9px; color: #888; text-transform: uppercase; }
         .mob-info-spot { font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15); }
         .mob-mode-tag { font-size: 10px; font-weight: bold; color: #ffc107; opacity: 0.6; }
+
+        /* ШПАРГАЛКА RNG */
+        .rng-hint {
+            text-align: center; font-size: 11px; color: #888; margin-bottom: 5px; font-family: monospace;
+            background: #222; padding: 4px; border-radius: 6px; border: 1px solid #333;
+        }
+        .rng-arrow { color: #ffc107; font-weight: bold; }
 
         /* ЭЛЕМЕНТЫ СТОЛА */
         .seat { position: absolute; width: 42px; height: 42px; background: #222; border: 1px solid #444; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; }
@@ -59,8 +66,6 @@ def show():
         .seat-active { border-color: #ffc107; background: #2a2a2a; }
         .seat-folded { opacity: 0.4; border-color: #333; }
         .opp-cards-mob { position: absolute; top: -10px; width: 22px; height: 30px; background: #fff; border-radius: 3px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); z-index: 20; box-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
-        
-        /* ФИШКИ */
         .dealer-mob { position: absolute; width: 14px; height: 14px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 8px; display: flex; justify-content: center; align-items: center; z-index: 10; border: 1px solid #bfa006; }
         .blind-mob { position: absolute; z-index: 9; display: flex; flex-direction: column; align-items: center; }
         .chip-mob { width: 12px; height: 12px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
@@ -68,7 +73,6 @@ def show():
 
         .m-pos-1 { bottom: 18%; left: 4%; } .m-pos-2 { top: 18%; left: 4%; } .m-pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } .m-pos-4 { top: 18%; right: 4%; } .m-pos-5 { bottom: 18%; right: 4%; }
         
-        /* HERO & RNG */
         .hero-mob { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 30; background: #212529; padding: 4px 10px; border-radius: 10px; border: 1px solid #ffc107; }
         .card-mob { width: 42px; height: 60px; background: white; border-radius: 4px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .tl-mob { position: absolute; top: 1px; left: 3px; font-weight: bold; font-size: 14px; line-height: 1; }
@@ -76,7 +80,6 @@ def show():
         .suit-red { color: #d32f2f; } .suit-blue { color: #0056b3; } .suit-black { color: #111; }
         .rng-badge { position: absolute; bottom: 50px; right: -15px; width: 28px; height: 28px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%; color: white; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 40; }
         
-        /* SRS КНОПКИ */
         .srs-container button { height: 50px !important; font-size: 13px !important; background: #343a40 !important; color: #adb5bd !important; border: 1px solid #495057 !important; box-shadow: none !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -108,7 +111,7 @@ def show():
     if not pool: st.error("No spots"); return
     if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
-    # --- STATE INIT ---
+    # --- STATE ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
@@ -116,18 +119,15 @@ def show():
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
     if 'last_error' not in st.session_state: st.session_state.last_error = False
 
-    # --- GENERATION ---
     if st.session_state.hand is None:
         chosen = random.choice(pool)
         st.session_state.current_spot_key = chosen
         src, sc, sp = chosen.split('|')
         data = ranges_db[src][sc][sp]
-        
         t_range = data.get("source", data.get("training", data.get("full", "")))
         poss = utils.parse_range_to_list(t_range)
         srs = utils.load_srs_data()
         w = [srs.get(f"{src}_{sc}_{sp}_{h}".replace(" ","_"), 100) for h in poss]
-        
         st.session_state.hand = random.choices(poss, weights=w, k=1)[0]
         st.session_state.rng = random.randint(0, 99)
         ps = ['♠','♥','♦','♣']; s1 = random.choice(ps)
@@ -137,7 +137,6 @@ def show():
     # --- CALC ---
     src, sc, sp = st.session_state.current_spot_key.split('|')
     data = ranges_db[src][sc][sp]
-    
     is_defense_mode = "call" in data
     
     rng = st.session_state.rng
@@ -189,11 +188,9 @@ def show():
             if p == villain_pos: is_active=True; c_type="3bet"
         else:
             if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"): is_active=True; c_type="blind" if p in ["SB","BB"] else "none"
-        
         cls = "seat-active" if is_active else "seat-folded"
         cards = '<div class="opp-cards-mob"></div>' if is_active else ""
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
-        
         s = get_pos_style(i)
         if c_type == "blind": chips_html += f'<div class="blind-mob" style="{s}"><div class="chip-mob"></div></div>'
         elif c_type == "3bet": chips_html += f'<div class="blind-mob" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-10px"></div><div class="chip-3bet" style="margin-top:-10px"></div></div>'
@@ -217,11 +214,14 @@ def show():
     """
     st.markdown(html, unsafe_allow_html=True)
 
+    # --- RNG HINT (ШПАРГАЛКА) ---
+    if is_defense_mode:
+        st.markdown('<div class="rng-hint">📉 0..Freq <span class="rng-arrow">→</span> Action | 📈 Freq..100 <span class="rng-arrow">→</span> Fold</div>', unsafe_allow_html=True)
+
     # --- BUTTONS ---
     st.markdown('<div class="mobile-controls">', unsafe_allow_html=True)
     if not st.session_state.srs_mode:
         if is_defense_mode:
-            # 3 BUTTONS
             c1, c2, c3 = st.columns(3)
             with c1:
                 if st.button("FOLD", key="f", use_container_width=True):
@@ -248,7 +248,6 @@ def show():
                     st.session_state.srs_mode = True; st.rerun()
                 st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(3) button").classList.add("raise-btn");</script>', unsafe_allow_html=True)
         else:
-            # 2 BUTTONS
             c1, c2 = st.columns(2)
             with c1:
                 if st.button("FOLD", key="f", use_container_width=True):
@@ -270,15 +269,12 @@ def show():
 
     # --- RESULT ---
     if st.session_state.srs_mode:
-        # Логика показа матрицы
         range_to_show = ""
         if is_defense_mode:
-            # Если была ошибка - показываем рендж ПРАВИЛЬНОГО действия
-            # Если было верно - показываем рендж СЫГРАННОГО действия (или правильного, т.к. они совпали)
             target_act = correct_act
             if target_act == "4BET": range_to_show = data.get("4bet", "")
             elif target_act == "CALL": range_to_show = data.get("call", "")
-            else: range_to_show = data.get("call", "") # Для фолда показываем колл как референс
+            else: range_to_show = data.get("call", "")
         else:
             range_to_show = data.get("full", "")
 
