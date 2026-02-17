@@ -16,35 +16,48 @@ ALL_HANDS = [r1+r2+s for r1 in RANKS for r2 in RANKS for s in ('s','o') if (r1<r
 @st.cache_data(ttl=0)
 def load_ranges():
     try:
-        with open(RANGES_FILE, 'r', encoding='utf-8') as f: return json.load(f)
-    except: return {}
+        with open(RANGES_FILE, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except:
+        return {}
 
 def load_srs_data():
     if os.path.exists(SRS_FILE):
-        try: with open(SRS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SRS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_srs_data(data):
-    with open(SRS_FILE, 'w') as f: json.dump(data, f)
+    with open(SRS_FILE, 'w') as f:
+        json.dump(data, f)
 
 def load_user_settings():
     if os.path.exists(SETTINGS_FILE):
-        try: with open(SETTINGS_FILE, 'r') as f: return json.load(f)
-        except: return {}
+        try:
+            with open(SETTINGS_FILE, 'r') as f:
+                return json.load(f)
+        except:
+            return {}
     return {}
 
 def save_user_settings(settings):
-    with open(SETTINGS_FILE, 'w') as f: json.dump(settings, f)
+    with open(SETTINGS_FILE, 'w') as f:
+        json.dump(settings, f)
 
 def load_history():
-    if os.path.exists(HISTORY_FILE): return pd.read_csv(HISTORY_FILE)
+    if os.path.exists(HISTORY_FILE):
+        return pd.read_csv(HISTORY_FILE)
     return pd.DataFrame(columns=["Date", "Spot", "Hand", "Result", "CorrectAction"])
 
 def save_to_history(record):
     df_new = pd.DataFrame([record])
-    if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
-    else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
+    if not os.path.exists(HISTORY_FILE):
+        df_new.to_csv(HISTORY_FILE, index=False)
+    else:
+        df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
 # --- ЛОГИКА ---
 def update_srs_smart(spot_id, hand, rating):
