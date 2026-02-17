@@ -4,27 +4,47 @@ from datetime import datetime
 import utils
 
 def show():
-    # --- CSS ---
+    # --- МОБИЛЬНЫЙ CSS (ФИНАЛЬНАЯ СБОРКА) ---
     st.markdown("""
     <style>
-        .block-container { padding-top: 3rem !important; padding-bottom: 5rem !important; }
+        .block-container { 
+            padding-top: 3rem !important; 
+            padding-bottom: 5rem !important; 
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
+        }
 
-        /* КОНТЕЙНЕР КНОПОК (3 В РЯД) */
-        .mobile-controls { display: flex; flex-direction: row; width: 100%; gap: 6px; margin-top: 10px; }
-        .mobile-controls div[data-testid="column"] { width: 33% !important; flex: 1 1 33% !important; min-width: 0 !important; }
+        /* === КНОПКИ В РЯД (ЖЕЛЕЗОБЕТОННО) === */
+        .mobile-controls { 
+            display: flex; 
+            flex-direction: row; 
+            width: 100%; 
+            gap: 8px; 
+            margin-top: 10px; 
+        }
         
+        .mobile-controls div[data-testid="column"] { 
+            flex: 1 1 0% !important; 
+            min-width: 0 !important; 
+        }
+
         .mobile-controls button { 
-            width: 100% !important; height: 65px !important; 
-            font-size: 16px !important; font-weight: 800 !important; 
-            border-radius: 10px !important; border: none !important; 
-            text-transform: uppercase !important; margin: 0px !important; 
-            padding: 0px !important;
+            width: 100% !important; 
+            height: 65px !important; 
+            font-size: 16px !important; 
+            font-weight: 800 !important; 
+            border-radius: 12px !important; 
+            border: none !important; 
+            text-transform: uppercase !important; 
+            margin: 0px !important; 
+            padding: 0px !important; 
         }
 
         /* ЦВЕТА КНОПОК */
         .fold-btn button { background: #495057 !important; color: #adb5bd !important; border: 1px solid #6c757d !important; }
         .call-btn button { background: #28a745 !important; color: white !important; box-shadow: 0 4px 0 #1e7e34 !important; }
-        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; } /* 4BET - Magenta/Red */
+        .raise-btn button { background: #d63384 !important; color: white !important; box-shadow: 0 4px 0 #a02561 !important; } /* Малиновый для 4Bet */
+        .open-raise-btn button { background: #2e7d32 !important; color: white !important; box-shadow: 0 4px 0 #1b5e20 !important; } /* Зеленый для Open Raise */
 
         /* СТОЛ */
         .mobile-game-area { position: relative; width: 100%; height: 260px; margin: 0 auto 10px auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 130px; box-shadow: 0 4px 10px rgba(0,0,0,0.8); }
@@ -33,18 +53,22 @@ def show():
         .mob-info-spot { font-size: 20px; font-weight: 900; color: rgba(255,255,255,0.15); }
         .mob-mode-tag { font-size: 10px; font-weight: bold; color: #ffc107; opacity: 0.6; }
 
-        /* ЭЛЕМЕНТЫ */
+        /* ЭЛЕМЕНТЫ СТОЛА */
         .seat { position: absolute; width: 42px; height: 42px; background: #222; border: 1px solid #444; border-radius: 6px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; }
         .seat-label { font-size: 8px; color: #fff; font-weight: bold; margin-top: auto; margin-bottom: 2px; }
         .seat-active { border-color: #ffc107; background: #2a2a2a; }
         .seat-folded { opacity: 0.4; border-color: #333; }
         .opp-cards-mob { position: absolute; top: -10px; width: 22px; height: 30px; background: #fff; border-radius: 3px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); z-index: 20; box-shadow: 1px 1px 3px rgba(0,0,0,0.8); }
+        
+        /* ФИШКИ */
         .dealer-mob { position: absolute; width: 14px; height: 14px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 8px; display: flex; justify-content: center; align-items: center; z-index: 10; border: 1px solid #bfa006; }
         .blind-mob { position: absolute; z-index: 9; display: flex; flex-direction: column; align-items: center; }
         .chip-mob { width: 12px; height: 12px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.5); }
         .chip-3bet { width: 14px; height: 14px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.6); }
 
         .m-pos-1 { bottom: 18%; left: 4%; } .m-pos-2 { top: 18%; left: 4%; } .m-pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } .m-pos-4 { top: 18%; right: 4%; } .m-pos-5 { bottom: 18%; right: 4%; }
+        
+        /* HERO & RNG */
         .hero-mob { position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; z-index: 30; background: #212529; padding: 4px 10px; border-radius: 10px; border: 1px solid #ffc107; }
         .card-mob { width: 42px; height: 60px; background: white; border-radius: 4px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .tl-mob { position: absolute; top: 1px; left: 3px; font-weight: bold; font-size: 14px; line-height: 1; }
@@ -52,7 +76,8 @@ def show():
         .suit-red { color: #d32f2f; } .suit-blue { color: #0056b3; } .suit-black { color: #111; }
         .rng-badge { position: absolute; bottom: 50px; right: -15px; width: 28px; height: 28px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%; color: white; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.5); z-index: 40; }
         
-        .srs-container button { height: 50px !important; font-size: 13px !important; background: #343a40 !important; color: #999 !important; border: 1px solid #444 !important; box-shadow: none !important; }
+        /* SRS КНОПКИ */
+        .srs-container button { height: 50px !important; font-size: 13px !important; background: #343a40 !important; color: #adb5bd !important; border: 1px solid #495057 !important; box-shadow: none !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -83,7 +108,7 @@ def show():
     if not pool: st.error("No spots"); return
     if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
-    # --- STATE ---
+    # --- STATE INIT ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
@@ -91,17 +116,16 @@ def show():
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
     if 'last_error' not in st.session_state: st.session_state.last_error = False
 
+    # --- GENERATION ---
     if st.session_state.hand is None:
         chosen = random.choice(pool)
         st.session_state.current_spot_key = chosen
         src, sc, sp = chosen.split('|')
         data = ranges_db[src][sc][sp]
         
-        # Определяем источник рук (source или training или full)
+        # Берем источник рук: либо source (Def), либо training/full (Open Raise)
         t_range = data.get("source", data.get("training", data.get("full", "")))
         poss = utils.parse_range_to_list(t_range)
-        
-        # SRS Weights (для частоты выпадения)
         srs = utils.load_srs_data()
         w = [srs.get(f"{src}_{sc}_{sp}_{h}".replace(" ","_"), 100) for h in poss]
         
@@ -115,26 +139,29 @@ def show():
     src, sc, sp = st.session_state.current_spot_key.split('|')
     data = ranges_db[src][sc][sp]
     
-    # Получаем веса для Call и 4Bet
-    w_call = utils.get_weight(st.session_state.hand, data.get("call", ""))
-    w_4bet = utils.get_weight(st.session_state.hand, data.get("4bet", ""))
+    # Проверяем, какой это тип тренировки
+    is_defense_mode = "call" in data # Если есть поле 'call', значит это защита (3 кнопки)
     
-    # Определяем правильное действие по RNG
-    # Приоритет: 4Bet (0..w4) -> Call (w4..w4+wc) -> Fold (ost)
     rng = st.session_state.rng
     correct_act = "FOLD"
     
-    if rng < w_4bet:
-        correct_act = "4BET"
-    elif rng < (w_4bet + w_call):
-        correct_act = "CALL"
+    if is_defense_mode:
+        w_call = utils.get_weight(st.session_state.hand, data.get("call", ""))
+        w_4bet = utils.get_weight(st.session_state.hand, data.get("4bet", ""))
+        # Logic: 0..w4 -> 4Bet, w4..w4+wc -> Call, else Fold
+        if rng < w_4bet: correct_act = "4BET"
+        elif rng < (w_4bet + w_call): correct_act = "CALL"
+    else:
+        # Open Raise Mode
+        full_r = data.get("full", "")
+        w = utils.get_weight(st.session_state.hand, full_r)
+        if w > 0: correct_act = "RAISE"
     
-    # Отрисовка
+    # --- RENDER TABLE ---
     h_val = st.session_state.hand; s1, s2 = st.session_state.suits
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
-    # TABLE VISUALS
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -145,9 +172,9 @@ def show():
     elif "BB" in u: hero_idx = 5
     rot = order[hero_idx:] + order[:hero_idx]
 
-    is_3bet = "3bet" in sc or "Def" in sc
+    is_3bet_pot = "3bet" in sc or "Def" in sc
     villain_pos = None
-    if is_3bet:
+    if is_3bet_pot:
         if "vs MP" in sp: villain_pos = "MP"
         elif "vs CO" in sp: villain_pos = "CO"
         elif "vs BU" in sp or "vs BTN" in sp: villain_pos = "BTN"
@@ -155,15 +182,14 @@ def show():
         elif "vs BB" in sp: villain_pos = "BB"
         elif "vs Blinds" in sp: villain_pos = random.choice(["SB", "BB"])
 
-    opp_html = ""
-    chips_html = ""
+    opp_html = ""; chips_html = ""
     def get_pos_style(idx):
         return {0: "bottom:25%;left:47%;", 1: "bottom:25%;left:22%;", 2: "top:25%;left:22%;", 3: "top:10%;left:47%;", 4: "top:25%;right:22%;", 5: "bottom:25%;right:22%;"}.get(idx, "")
 
     for i in range(1, 6):
         p = rot[i]
         is_active = False; c_type = "none"
-        if is_3bet:
+        if is_3bet_pot:
             if p == villain_pos: is_active=True; c_type="3bet"
         else:
             if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"): is_active=True; c_type="blind" if p in ["SB","BB"] else "none"
@@ -178,7 +204,7 @@ def show():
         if p == "BTN": chips_html += f'<div class="dealer-mob" style="{s}">D</div>'
 
     hs = get_pos_style(0)
-    if is_3bet: chips_html += f'<div class="blind-mob" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px"></div></div>' # Open raise
+    if is_3bet_pot: chips_html += f'<div class="blind-mob" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px"></div></div>'
     elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="blind-mob" style="{hs}"><div class="chip-mob"></div></div>'
     if rot[0] == "BTN": chips_html += f'<div class="dealer-mob" style="{hs}">D</div>'
 
@@ -195,48 +221,74 @@ def show():
     """
     st.markdown(html, unsafe_allow_html=True)
 
-    # --- 3 BUTTONS ---
+    # --- BUTTONS RENDER ---
     st.markdown('<div class="mobile-controls">', unsafe_allow_html=True)
+    
     if not st.session_state.srs_mode:
-        # FOLD
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("FOLD", key="f", use_container_width=True):
-                is_correct = (correct_act == "FOLD")
-                st.session_state.last_error = not is_correct
-                st.session_state.msg = f"✅ Correct" if is_correct else f"❌ Err! RNG {rng} -> {correct_act}"
-                utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_correct), "CorrectAction": correct_act})
-                st.session_state.srs_mode = True; st.rerun()
-            st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(1) button").classList.add("fold-btn");</script>', unsafe_allow_html=True)
-        # CALL
-        with c2:
-            if st.button("CALL", key="c", use_container_width=True):
-                is_correct = (correct_act == "CALL")
-                st.session_state.last_error = not is_correct
-                st.session_state.msg = f"✅ Correct" if is_correct else f"❌ Err! RNG {rng} -> {correct_act}"
-                utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_correct), "CorrectAction": correct_act})
-                st.session_state.srs_mode = True; st.rerun()
-            st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(2) button").classList.add("call-btn");</script>', unsafe_allow_html=True)
-        # 4BET
-        with c3:
-            if st.button("4BET", key="r", use_container_width=True):
-                is_correct = (correct_act == "4BET")
-                st.session_state.last_error = not is_correct
-                st.session_state.msg = f"✅ Correct" if is_correct else f"❌ Err! RNG {rng} -> {correct_act}"
-                utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_correct), "CorrectAction": correct_act})
-                st.session_state.srs_mode = True; st.rerun()
-            st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(3) button").classList.add("raise-btn");</script>', unsafe_allow_html=True)
+        if is_defense_mode:
+            # === 3 BUTTONS (FOLD, CALL, 4BET) ===
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("FOLD", key="f", use_container_width=True):
+                    is_c = (correct_act == "FOLD")
+                    st.session_state.last_error = not is_c
+                    st.session_state.msg = f"✅ Correct" if is_c else f"❌ Err! RNG {rng} -> {correct_act}"
+                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    st.session_state.srs_mode = True; st.rerun()
+                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(1) button").classList.add("fold-btn");</script>', unsafe_allow_html=True)
+            with c2:
+                if st.button("CALL", key="c", use_container_width=True):
+                    is_c = (correct_act == "CALL")
+                    st.session_state.last_error = not is_c
+                    st.session_state.msg = f"✅ Correct" if is_c else f"❌ Err! RNG {rng} -> {correct_act}"
+                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    st.session_state.srs_mode = True; st.rerun()
+                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(2) button").classList.add("call-btn");</script>', unsafe_allow_html=True)
+            with c3:
+                if st.button("4BET", key="r", use_container_width=True):
+                    is_c = (correct_act == "4BET")
+                    st.session_state.last_error = not is_c
+                    st.session_state.msg = f"✅ Correct" if is_c else f"❌ Err! RNG {rng} -> {correct_act}"
+                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    st.session_state.srs_mode = True; st.rerun()
+                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(3) button").classList.add("raise-btn");</script>', unsafe_allow_html=True)
+        else:
+            # === 2 BUTTONS (OPEN RAISE MODE) ===
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("FOLD", key="f", use_container_width=True):
+                    is_c = (correct_act == "FOLD")
+                    st.session_state.last_error = not is_c
+                    st.session_state.msg = "✅ Correct" if is_c else "❌ Should be RAISE"
+                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    st.session_state.srs_mode = True; st.rerun()
+                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(1) button").classList.add("fold-btn");</script>', unsafe_allow_html=True)
+            with c2:
+                if st.button("RAISE", key="r", use_container_width=True):
+                    is_c = (correct_act == "RAISE")
+                    st.session_state.last_error = not is_c
+                    st.session_state.msg = "✅ Correct" if is_c else "❌ Should be FOLD"
+                    utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(is_c), "CorrectAction": correct_act})
+                    st.session_state.srs_mode = True; st.rerun()
+                st.markdown('<script>parent.document.querySelector("div[data-testid=\'column\']:nth-child(2) button").classList.add("open-raise-btn");</script>', unsafe_allow_html=True)
+
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # RESULT & SRS
+    # --- RESULT & ERROR VISUALIZATION ---
     if st.session_state.srs_mode:
         if st.session_state.last_error:
             st.error(st.session_state.msg)
-            # Show range logic details
-            with st.expander(f"Analysis: {h_val} (RNG {rng})", expanded=True):
-                st.write(f"4Bet Freq: {int(w_4bet)}%")
-                st.write(f"Call Freq: {int(w_call)}%")
-                st.write(f"Correct Action: **{correct_act}**")
+            # ВАЖНО: Показываем матрицу того действия, которое было ПРАВИЛЬНЫМ
+            with st.expander(f"Show Range ({correct_act})", expanded=True):
+                range_to_show = ""
+                if is_defense_mode:
+                    if correct_act == "4BET": range_to_show = data.get("4bet", "")
+                    elif correct_act == "CALL": range_to_show = data.get("call", "")
+                    else: range_to_show = data.get("call", "") # Если фолд, покажем колл для ориентира
+                else:
+                    range_to_show = data.get("full", "")
+                
+                st.markdown(utils.render_range_matrix(range_to_show, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.success(st.session_state.msg)
         
