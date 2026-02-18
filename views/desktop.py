@@ -54,11 +54,9 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
         
-        # ДОБАВИЛ '3max'
         mode = st.selectbox("Positions", ["All", "3max", "Early", "Late", "Manual"], index=["All", "3max", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
         
         pool = []
-        # 3-MAX SPOTS
         spots_3max = ["BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB"]
 
         for src in sel_src:
@@ -66,7 +64,6 @@ def show():
                 if sc in ranges_db[src]:
                     for sp in ranges_db[src][sc]:
                         u = sp.upper()
-                        # НОВАЯ ЛОГИКА
                         is_match = False
                         if mode == "All": is_match = True
                         elif mode == "3max": 
@@ -82,6 +79,12 @@ def show():
         
         if mode == "Manual" and pool: sp_man = st.selectbox("Select Spot", pool); pool = [sp_man]
         if st.button("Apply"): utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode}); st.session_state.hand = None; st.rerun()
+
+    # --- ЗАЩИТА ОТ ПУСТОГО ПУЛА ---
+    if not pool:
+        st.warning("⚠️ Нет раздач для выбранных фильтров.")
+        st.info(f"Сценарий: {sel_sc}, Фильтр: {mode}. Попробуй сменить фильтр.")
+        st.stop()
 
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
@@ -138,7 +141,6 @@ def show():
         is_3bet_pot = "3bet" in sc or "Def" in sc
         villain_pos = None
         if is_3bet_pot:
-            # Улучшенный парсинг
             parts = sp.split()
             if "vs 3bet" in sp:
                 villain_pos = parts[-1]
@@ -212,7 +214,7 @@ def show():
                     if st.button("CALL"):
                         corr = (correct_act == "CALL")
                         st.session_state.last_error = not corr
-                        st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                        st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                         utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                         st.session_state.srs_mode = True; st.rerun()
                     st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[1].classList.add("call-btn");</script>', unsafe_allow_html=True)
@@ -220,7 +222,7 @@ def show():
                     if st.button("4BET"):
                         corr = (correct_act == "4BET")
                         st.session_state.last_error = not corr
-                        st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                        st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                         utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                         st.session_state.srs_mode = True; st.rerun()
                     st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[2].classList.add("raise-btn");</script>', unsafe_allow_html=True)
