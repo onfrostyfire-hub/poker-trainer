@@ -4,7 +4,6 @@ from datetime import datetime
 import utils
 
 def show():
-    # --- CSS ---
     st.markdown("""
     <style>
         .block-container { padding-top: 3rem !important; padding-bottom: 5rem !important; }
@@ -50,9 +49,8 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
         
-        # --- ФИЛЬТРЫ ---
-        filter_options = ["All", "3max", "CO def vs 3bet", "Early", "Late", "Manual"]
-        # Безопасный индекс
+        # --- БЕРЕМ ОПЦИИ ИЗ UTILS ---
+        filter_options = utils.get_filter_options()
         saved_mode = saved.get("mode", "All")
         idx_mode = filter_options.index(saved_mode) if saved_mode in filter_options else 0
         mode = st.selectbox("Positions", filter_options, index=idx_mode)
@@ -61,36 +59,8 @@ def show():
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
-    pool = []
-    # --- СПИСКИ ГРУПП ---
-    spots_3max = ["BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB"]
-    spots_co_def = ["CO def vs 3bet BU", "CO def vs 3bet SB", "CO def vs 3bet BB"]
-
-    for src in sel_src:
-        for sc in sel_sc:
-            if sc in ranges_db[src]:
-                for sp in ranges_db[src][sc]:
-                    u = sp.upper()
-                    
-                    # --- ЛОГИКА ФИЛЬТРАЦИИ ---
-                    is_match = False
-                    if mode == "All":
-                        is_match = True
-                    elif mode == "3max":
-                        if sp in spots_3max: is_match = True
-                    elif mode == "CO def vs 3bet":
-                        if sp in spots_co_def: is_match = True
-                    elif mode == "Early":
-                        if any(x in u for x in ["EP","UTG","MP"]) and "DEF" not in u: is_match = True
-                        # Добавляем EP Def если нужно, но обычно Early это EP/MP Open
-                        if "EP" in u and "DEF" in u: is_match = True
-                    elif mode == "Late":
-                        if any(x in u for x in ["CO","BU","BTN","SB"]): is_match = True
-                    elif mode == "Manual":
-                        is_match = True 
-                    
-                    if is_match:
-                        pool.append(f"{src}|{sc}|{sp}")
+    # --- ПОЛУЧАЕМ ПУЛ ЧЕРЕЗ UTILS ---
+    pool = utils.get_filtered_pool(ranges_db, sel_src, sel_sc, mode)
 
     if not pool:
         st.warning(f"⚠️ Нет раздач для фильтра: {mode}")
@@ -98,6 +68,7 @@ def show():
 
     if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
+    # --- ДАЛЕЕ СТАНДАРТНАЯ ЛОГИКА (НЕ МЕНЯЕТСЯ) ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
@@ -110,7 +81,7 @@ def show():
         st.session_state.current_spot_key = chosen
         src, sc, sp = chosen.split('|')
         data = ranges_db[src][sc][sp]
-        t_range = data.get("source", data.get("training", data.get("full", "")))
+        t_range = data.get("training", data.get("source", data.get("full", "")))
         poss = utils.parse_range_to_list(t_range)
         srs = utils.load_srs_data()
         w = [srs.get(f"{src}_{sc}_{sp}_{h}".replace(" ","_"), 100) for h in poss]
@@ -139,7 +110,7 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
-    # --- TABLE ---
+    # --- TABLE LOGIC (БЕЗ ИЗМЕНЕНИЙ) ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -153,10 +124,9 @@ def show():
     is_3bet_pot = "3bet" in sc or "Def" in sc
     villain_pos = None
     if is_3bet_pot:
-        # Парсинг оппонента
         parts = sp.split()
         if "vs 3bet" in sp:
-            villain_pos = parts[-1] # Берем последнее слово (BU, SB, BB)
+            villain_pos = parts[-1]
             if "/" in villain_pos: villain_pos = "BTN" if "BU" in villain_pos else "CO"
             if villain_pos == "BU": villain_pos = "BTN"
         elif "Blinds" in sp:
@@ -192,7 +162,7 @@ def show():
     hs = get_pos_style(0)
     if is_3bet_pot: chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px;"></div></div>'
     elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div></div>'
-    if rot[0] == "BTN": 
+    if rot[0] == "BTN":
         bs = get_btn_style(0)
         chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
