@@ -1,7 +1,6 @@
 import streamlit as st
 import random
 from datetime import datetime
-import pandas as pd  # Добавил pandas для работы с историей
 import utils
 
 def show():
@@ -10,38 +9,33 @@ def show():
     <style>
         .block-container { padding-top: 3rem !important; padding-bottom: 5rem !important; }
         
-        /* КНОПКИ */
         .mobile-controls { display: flex; gap: 8px; margin-top: 8px; width: 100%; }
         .mobile-controls div[data-testid="column"] { flex: 1; min-width: 0; }
         .mobile-controls button { width: 100%; height: 65px; font-weight: 800; font-size: 18px; border-radius: 12px; border: none; text-transform: uppercase; }
+        
         .fold-btn button { background: #495057; color: #adb5bd; border: 1px solid #6c757d; }
         .call-btn button { background: #28a745; color: white; box-shadow: 0 4px 0 #1e7e34; }
         .raise-btn button { background: #d63384; color: white; box-shadow: 0 4px 0 #a02561; }
         .open-raise-btn button { background: #2e7d32; color: white; box-shadow: 0 4px 0 #1b5e20; }
 
-        /* СТОЛ */
         .mobile-game-area { position: relative; width: 100%; height: 280px; margin: 0 auto; background: radial-gradient(ellipse at center, #1b5e20 0%, #0a2e0b 100%); border: 6px solid #3e2723; border-radius: 140px; box-shadow: 0 4px 15px rgba(0,0,0,0.8); }
         .mob-info { position: absolute; top: 25%; width: 100%; text-align: center; pointer-events: none; }
         .mob-info-src { font-size: 10px; color: #888; text-transform: uppercase; }
         .mob-info-spot { font-size: 22px; font-weight: 900; color: rgba(255,255,255,0.15); }
 
-        /* МЕСТА */
         .seat { position: absolute; width: 44px; height: 44px; background: #222; border: 1px solid #444; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; }
         .seat-label { font-size: 9px; color: #fff; font-weight: bold; margin-top: auto; margin-bottom: 2px; }
         .seat-active { border-color: #ffc107; background: #2a2a2a; }
         .seat-folded { opacity: 0.4; border-color: #333; }
         
-        /* КООРДИНАТЫ */
         .m-pos-1 { bottom: 20%; left: 5%; } .m-pos-2 { top: 20%; left: 5%; } .m-pos-3 { top: -15px; left: 50%; transform: translateX(-50%); } 
         .m-pos-4 { top: 20%; right: 5%; } .m-pos-5 { bottom: 20%; right: 5%; }
 
-        /* ФИШКИ */
         .chip-container { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .chip-mob { width: 14px; height: 14px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
         .chip-3bet { width: 16px; height: 16px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.8); }
         .dealer-mob { width: 16px; height: 16px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 9px; display: flex; justify-content: center; align-items: center; border: 1px solid #bfa006; position: absolute; z-index: 11; }
 
-        /* HERO */
         .hero-mob { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; z-index: 20; background: #222; padding: 5px 10px; border-radius: 12px; border: 1px solid #ffc107; }
         .card-mob { width: 45px; height: 64px; background: white; border-radius: 4px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .tl-mob { position: absolute; top: 1px; left: 3px; font-weight: bold; font-size: 14px; line-height: 1; }
@@ -51,17 +45,12 @@ def show():
         
         .rng-hint { text-align: center; color: #888; font-size: 11px; margin-bottom: 5px; font-family: monospace; }
         .srs-container button { height: 50px; font-size: 13px; background: #343a40; color: #aaa; border: 1px solid #555; }
-        
-        /* СТАТИСТИКА */
-        .stat-row { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #333; font-size: 13px; }
-        .stat-err { color: #ff6b6b; font-family: monospace; }
     </style>
     """, unsafe_allow_html=True)
 
     ranges_db = utils.load_ranges()
     if not ranges_db: st.error("No ranges"); return
 
-    # --- SETTINGS ---
     with st.expander("⚙️ Settings", expanded=False):
         saved = utils.load_user_settings()
         sel_src = st.multiselect("Source", list(ranges_db.keys()), default=saved.get("sources", [list(ranges_db.keys())[0]]))
@@ -73,37 +62,6 @@ def show():
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
-    # --- STATISTICS (НОВЫЙ БЛОК) ---
-    with st.expander("📊 Session Stats", expanded=False):
-        df = utils.load_history()
-        if not df.empty:
-            df["Date"] = pd.to_datetime(df["Date"])
-            now = datetime.now()
-            df_today = df[df["Date"].dt.date == now.date()]
-            
-            if not df_today.empty:
-                total = len(df_today)
-                corr = df_today["Result"].sum()
-                acc = int(corr/total*100) if total > 0 else 0
-                
-                # Метрики в ряд
-                c1, c2 = st.columns(2)
-                c1.metric("Accuracy", f"{acc}%", delta_color="normal")
-                c2.metric("Hands", total)
-                
-                # Последние ошибки
-                errs = df_today[df_today["Result"]==0].sort_values("Date", ascending=False).head(5)
-                if not errs.empty:
-                    st.caption("Recent Errors:")
-                    for i, r in errs.iterrows():
-                        h_html = utils.format_hand_colored(r['Hand'])
-                        st.markdown(f"<div class='stat-row'><span class='stat-err'>{h_html}</span> <span>{r['Spot']}</span></div>", unsafe_allow_html=True)
-            else:
-                st.info("No hands played today.")
-        else:
-            st.info("History is empty.")
-
-    # --- LOGIC ---
     pool = []
     for src in sel_src:
         for sc in sel_sc:
@@ -156,7 +114,6 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
-    # --- TABLE ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -189,22 +146,18 @@ def show():
     for i in range(1, 6):
         p = rot[i]
         is_act = False; c_type = "none"
-        
         if is_3bet_pot:
             if p == villain_pos: is_act = True; c_type = "3bet"
             elif p in ["SB", "BB"]: c_type = "blind"
         else:
             if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"):
                 is_act = True; c_type = "blind" if p in ["SB","BB"] else "none"
-        
         cls = "seat-active" if is_act else "seat-folded"
         cards = '<div class="opp-cards-mob"></div>' if is_act else ""
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
-        
         s = get_pos_style(i)
         if c_type == "blind": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-mob"></div></div>'
         elif c_type == "3bet": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-12px;"></div><div class="chip-3bet" style="margin-top:-12px;"></div></div>'
-        
         if p == "BTN":
             bs = get_btn_style(i)
             chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
@@ -232,7 +185,6 @@ def show():
     if is_defense:
         st.markdown('<div class="rng-hint">📉 0..Freq → Action | 📈 Freq..100 → Fold</div>', unsafe_allow_html=True)
 
-    # --- BUTTONS ---
     st.markdown('<div class="mobile-controls">', unsafe_allow_html=True)
     if not st.session_state.srs_mode:
         if is_defense:
