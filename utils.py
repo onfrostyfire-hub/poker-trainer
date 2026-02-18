@@ -18,8 +18,27 @@ for i, r1 in enumerate(RANKS):
         if i < j: ALL_HANDS.append(r1 + r2 + 's'); ALL_HANDS.append(r1 + r2 + 'o')
         elif i == j: ALL_HANDS.append(r1 + r2)
 
-# --- ГРУППЫ СПОТОВ (CUSTOM GROUPS) ---
-# Здесь мы определяем, какие споты входят в группы
+# --- РАЗМЕРЫ СТАВОК (BET SIZES) ---
+# Format: "Spot Name": (Hero_BB, Villain_BB)
+BET_SIZES_MAP = {
+    "CO def vs 3bet BU": (2.5, 7.5),
+    "CO def vs 3bet SB": (2.5, 12),
+    "CO def vs 3bet BB": (2.5, 12),
+    "BU def vs 3bet SB": (2.5, 12),
+    "BU def vs 3bet BB": (2.5, 12),
+    "SB def vs 3bet BB": (3.0, 9),
+    
+    # Добавил логичные дефолты для EP, чтобы там тоже было красиво (можешь поправить)
+    "EP OOP vs 3bet MP": (2.5, 7.5),
+    "EP OOP vs 3bet CO/BU": (2.5, 7.5),
+    "EP IP vs 3bet Blinds": (2.5, 12),
+}
+
+def get_bet_sizes(spot_name):
+    """Возвращает кортеж (Hero_Size, Villain_Size) или (None, None)"""
+    return BET_SIZES_MAP.get(spot_name, (None, None))
+
+# --- ГРУППЫ СПОТОВ ---
 GROUPS_DEFINITIONS = {
     "3max": [
         "BU def vs 3bet SB",
@@ -33,8 +52,6 @@ GROUPS_DEFINITIONS = {
     ]
 }
 
-# --- СПИСОК ОДИНОЧНЫХ ФИЛЬТРОВ ---
-# Споты, которые ты хочешь видеть отдельными строчками в меню
 SINGLE_SPOTS_FILTERS = [
     "CO def vs 3bet BU",
     "CO def vs 3bet SB",
@@ -46,70 +63,35 @@ SINGLE_SPOTS_FILTERS = [
 
 # --- ЛОГИКА ФИЛЬТРАЦИИ ---
 def get_filter_options():
-    """
-    Формирует список для выпадающего меню Positions.
-    Порядок: All -> Группы -> Одиночные споты -> Общие категории -> Manual
-    """
     options = ["All"]
-    
-    # 1. Добавляем твои группы
     options.extend(list(GROUPS_DEFINITIONS.keys()))
-    
-    # 2. Добавляем одиночные споты
     options.extend(SINGLE_SPOTS_FILTERS)
-    
-    # 3. Добавляем технические/старые категории
     options.extend(["Early", "Late", "Manual"])
-    
     return options
 
 def get_filtered_pool(ranges_db, selected_sources, selected_scenarios, filter_mode):
-    """
-    Фильтрует базу ренджей на основе выбранного режима (filter_mode).
-    """
     pool = []
-    
     for src in selected_sources:
         for sc in selected_scenarios:
             if sc not in ranges_db.get(src, {}): continue
-            
             for sp in ranges_db[src][sc]:
                 u = sp.upper()
                 is_match = False
-                
-                # 1. ALL (Все подряд)
-                if filter_mode == "All":
-                    is_match = True
-                
-                # 2. ГРУППЫ (3max, CO def...)
+                if filter_mode == "All": is_match = True
                 elif filter_mode in GROUPS_DEFINITIONS:
-                    if sp in GROUPS_DEFINITIONS[filter_mode]:
-                        is_match = True
-                
-                # 3. ТОЧНОЕ СОВПАДЕНИЕ (Одиночные фильтры типа "CO def vs 3bet BU")
-                elif filter_mode == sp:
-                    is_match = True
-                
-                # 4. СТАРЫЕ КАТЕГОРИИ (Early/Late)
+                    if sp in GROUPS_DEFINITIONS[filter_mode]: is_match = True
+                elif filter_mode == sp: is_match = True
                 elif filter_mode == "Early":
-                    # EP/MP/UTG. Обычно это Open Raise, поэтому исключаем Def, если явно не сказано
                     if any(x in u for x in ["EP", "UTG", "MP"]) and "DEF" not in u: is_match = True
-                    # Если нужно добавить EP защиту в Early:
                     if "EP" in u and "DEF" in u: is_match = True
-                    
                 elif filter_mode == "Late":
                     if any(x in u for x in ["CO", "BU", "BTN", "SB"]): is_match = True
+                elif filter_mode == "Manual": is_match = True
                 
-                # 5. MANUAL (пропускаем все, выбор будет в селекторе спота)
-                elif filter_mode == "Manual":
-                    is_match = True
-                
-                if is_match:
-                    pool.append(f"{src}|{sc}|{sp}")
-                    
+                if is_match: pool.append(f"{src}|{sc}|{sp}")
     return pool
 
-# --- СТАНДАРТНЫЕ ФУНКЦИИ (ЗАГРУЗКА, СОХРАНЕНИЕ, РЕНДЕР) ---
+# --- STANDARD FUNCTIONS ---
 @st.cache_data(ttl=0)
 def load_ranges():
     if not os.path.exists(RANGES_FILE): return {}
@@ -205,21 +187,17 @@ def render_range_matrix(spot_data, target_hand=None):
     r_call = spot_data.get("call", "")
     r_4bet = spot_data.get("4bet", "")
     r_full = spot_data.get("full", "")
-    
     grid_html = '<div style="display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:#111;padding:1px;border:1px solid #444;">'
     for r1 in RANKS:
         for r2 in RANKS:
             if RANKS.index(r1) == RANKS.index(r2): h = r1 + r2
             elif RANKS.index(r1) < RANKS.index(r2): h = r1 + r2 + 's'
             else: h = r2 + r1 + 'o'
-            
             w_c = get_weight(h, r_call)
             w_4 = get_weight(h, r_4bet)
             w_f = get_weight(h, r_full)
-            
             style = "aspect-ratio:1;display:flex;justify-content:center;align-items:center;font-size:7px;cursor:default;color:#fff;"
             bg = "#2c3034"
-            
             if w_4 > 0 or w_c > 0:
                 if w_4 > 0 and w_c > 0: bg = "linear-gradient(135deg, #d63384 50%, #28a745 50%)"
                 elif w_4 > 0 and w_4 < 100: bg = "linear-gradient(135deg, #d63384 50%, #2c3034 50%)"
@@ -229,11 +207,8 @@ def render_range_matrix(spot_data, target_hand=None):
             elif w_f > 0:
                 if w_f < 100: bg = "linear-gradient(135deg, #28a745 50%, #2c3034 50%)"
                 else: bg = "#28a745"
-            else:
-                style += "color:#495057;"
-            
+            else: style += "color:#495057;"
             style += f"background:{bg};"
-            if target_hand and h == target_hand:
-                style += "border:1.5px solid #ffc107;z-index:10;box-shadow: 0 0 4px #ffc107;"
+            if target_hand and h == target_hand: style += "border:1.5px solid #ffc107;z-index:10;box-shadow: 0 0 4px #ffc107;"
             grid_html += f'<div style="{style}">{h}</div>'
     return grid_html + '</div>'
