@@ -4,32 +4,25 @@ from datetime import datetime
 import utils
 
 def show():
-    # --- CSS ---
     st.markdown("""
     <style>
         .stApp { background-color: #212529; color: #e9ecef; }
         .block-container { padding-top: 4rem; }
-        
-        /* СТОЛ */
         .game-area { position: relative; width: 100%; max-width: 700px; height: 400px; margin: 0 auto; background: radial-gradient(ellipse at center, #2e7d32 0%, #1b5e20 100%); border: 15px solid #4a1c1c; border-radius: 200px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
         .table-info { position: absolute; top: 20%; width: 100%; text-align: center; pointer-events: none; }
         .info-spot { font-size: 24px; font-weight: 800; color: rgba(255,255,255,0.2); }
-
-        /* МЕСТА */
         .seat { position: absolute; width: 65px; height: 65px; background: #343a40; border: 2px solid #495057; border-radius: 8px; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 5; }
         .seat-label { color: #fff; font-weight: bold; font-size: 11px; margin-top: 15px; }
         .seat-active { border-color: #ffc107; background: #343a40; }
         .seat-folded { opacity: 0.4; border-color: #212529; }
-        
-        /* КАРТЫ И ФИШКИ */
         .opp-cards { position: absolute; top: -12px; width: 34px; height: 48px; background: #fff; border-radius: 4px; border: 1px solid #ccc; background-image: repeating-linear-gradient(45deg, #b71c1c 0, #b71c1c 2px, #fff 2px, #fff 4px); z-index: 4; }
+        .pos-1 { bottom: 20%; left: 10%; } .pos-2 { top: 20%; left: 10%; } .pos-3 { top: -30px; left: 50%; transform: translateX(-50%); } 
+        .pos-4 { top: 20%; right: 10%; } .pos-5 { bottom: 20%; right: 10%; }
         .chip-container { position: absolute; z-index: 10; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
         .poker-chip { width: 22px; height: 22px; background: #222; border: 3px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
         .chip-3bet { width: 24px; height: 24px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.6); }
         .dealer-button { width: 24px; height: 24px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; z-index: 15; position: absolute; }
         .bet-txt { font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; background: rgba(0,0,0,0.6); padding: 1px 3px; border-radius: 4px; margin-top: -5px; z-index: 20; }
-
-        /* HERO */
         .hero-panel { position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%); background: #212529; border: 2px solid #ffc107; border-radius: 12px; padding: 6px 18px; display: flex; gap: 8px; z-index: 10; align-items: center; }
         .card { width: 50px; height: 70px; background: white; border-radius: 5px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         .tl { position: absolute; top: 2px; left: 4px; font-weight: bold; font-size: 16px; }
@@ -37,8 +30,6 @@ def show():
         .suit-red { color: #d32f2f; } .suit-blue { color: #0056b3; } .suit-black { color: #212529; }
         .rng-desktop { position: absolute; right: -50px; top: 15px; width: 40px; height: 40px; background: #6f42c1; border: 2px solid #fff; border-radius: 50%; color: white; font-weight: bold; display: flex; justify-content: center; align-items: center; }
         .rng-hint-box { text-align: center; color: #888; font-size: 13px; font-family: monospace; margin-top: 60px; margin-bottom: 10px; background: #2b2b2b; padding: 5px; border-radius: 6px; border: 1px solid #444; width: 100%; }
-
-        /* BUTTONS */
         div.stButton > button { width: 100%; height: 60px !important; font-size: 18px !important; font-weight: 700; border-radius: 8px; text-transform: uppercase; }
         .fold-btn button { background: #495057 !important; color: #adb5bd !important; }
         .call-btn button { background: #28a745 !important; color: white !important; }
@@ -75,12 +66,14 @@ def show():
 
     if mode == "Manual" and pool: sp_man = st.selectbox("Select Spot", pool); pool = [sp_man]
 
+    # --- ЗАЩИТА ОТ КРАША ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
+    if 'current_spot_key' not in st.session_state: st.session_state.current_spot_key = None
     
-    if st.session_state.hand is None:
+    if st.session_state.hand is None or st.session_state.current_spot_key is None:
         chosen = random.choice(pool)
         st.session_state.current_spot_key = chosen
         src, sc, sp = chosen.split('|')
@@ -138,7 +131,10 @@ def show():
             elif "Blinds" in sp:
                 villain_pos = random.choice(["SB", "BB"])
 
-        hero_bet, villain_bet = utils.get_bet_sizes(sp)
+        try:
+            hero_bet, villain_bet = utils.get_bet_sizes(sp)
+        except:
+            hero_bet, villain_bet = None, None
 
         opp_html = ""; chips_html = ""
         def get_pos_style(idx):
@@ -198,7 +194,6 @@ def show():
         if is_defense: st.markdown('<div class="rng-hint-box">📉 0..Freq → Action | 📈 Freq..100 → Fold</div>', unsafe_allow_html=True)
         else: st.markdown("<div style='height:30px;'></div>", unsafe_allow_html=True)
 
-        # --- BUTTONS ---
         if not st.session_state.srs_mode:
             if is_defense:
                 c1, c2, c3 = st.columns(3)
@@ -214,7 +209,7 @@ def show():
                     if st.button("CALL"):
                         corr = (correct_act == "CALL")
                         st.session_state.last_error = not corr
-                        st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                        st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                         utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                         st.session_state.srs_mode = True; st.rerun()
                     st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[1].classList.add("call-btn");</script>', unsafe_allow_html=True)
@@ -222,7 +217,7 @@ def show():
                     if st.button("4BET"):
                         corr = (correct_act == "4BET")
                         st.session_state.last_error = not corr
-                        st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                        st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                         utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                         st.session_state.srs_mode = True; st.rerun()
                     st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[2].classList.add("raise-btn");</script>', unsafe_allow_html=True)
@@ -252,12 +247,13 @@ def show():
             if s2.button("NORM", use_container_width=True): utils.update_srs_smart(k, st.session_state.hand, 'normal'); st.session_state.hand = None; st.rerun()
             if s3.button("EASY", use_container_width=True): utils.update_srs_smart(k, st.session_state.hand, 'easy'); st.session_state.hand = None; st.rerun()
 
-    # --- RIGHT COL (PEEK / RESULT) ---
+    # --- RIGHT COL ---
     with col_right:
         if st.session_state.srs_mode:
             st.markdown(f"**{sp}** Range ({correct_act})")
             st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
+            # --- PEEK BUTTON ---
             st.markdown(f"<div style='text-align:center;font-weight:bold;margin-bottom:10px;'>{sp}</div>", unsafe_allow_html=True)
             with st.expander("🫣 Подсмотреть Рендж", expanded=False):
                 st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
