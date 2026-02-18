@@ -5,19 +5,89 @@ import os
 import random
 from datetime import datetime, timedelta
 
-# КОНСТАНТЫ
+# --- ФАЙЛЫ ---
 HISTORY_FILE = 'history_log.csv'
 SRS_FILE = 'srs_data.json'
 RANGES_FILE = 'ranges.json'
 SETTINGS_FILE = 'user_settings.json'
 RANKS = 'AKQJT98765432'
+
+# --- КОНФИГУРАЦИЯ ФИЛЬТРОВ (РЕДАКТИРУЙ ЭТО) ---
+# Здесь ты задаешь свои группы спотов.
+CUSTOM_GROUPS = {
+    "3max": [
+        "BU def vs 3bet SB", 
+        "BU def vs 3bet BB", 
+        "SB def vs 3bet BB"
+    ],
+    "CO def vs 3bet": [
+        "CO def vs 3bet BU", 
+        "CO def vs 3bet SB", 
+        "CO def vs 3bet BB"
+    ]
+}
+
+# Стандартные опции
+BASE_FILTERS = ["All", "Early", "Late", "Manual"]
+
 ALL_HANDS = []
 for i, r1 in enumerate(RANKS):
     for j, r2 in enumerate(RANKS):
         if i < j: ALL_HANDS.append(r1 + r2 + 's'); ALL_HANDS.append(r1 + r2 + 'o')
         elif i == j: ALL_HANDS.append(r1 + r2)
 
-# ЗАГРУЗКА ДАННЫХ
+# --- ЛОГИКА ФИЛЬТРАЦИИ ---
+def get_filter_options():
+    """Возвращает полный список доступных фильтров для выпадающего меню."""
+    # Порядок: All, твои группы, Early/Late, Manual, потом конкретные споты
+    return ["All"] + list(CUSTOM_GROUPS.keys()) + ["Early", "Late", "Manual"]
+
+def get_filtered_pool(ranges_db, selected_sources, selected_scenarios, filter_mode):
+    """
+    Главная функция. Принимает настройки и возвращает список ключей (pool).
+    """
+    pool = []
+    
+    for src in selected_sources:
+        for sc in selected_scenarios:
+            if sc not in ranges_db.get(src, {}): continue
+            
+            for sp in ranges_db[src][sc]:
+                u = sp.upper()
+                is_match = False
+                
+                # 1. ALL
+                if filter_mode == "All":
+                    is_match = True
+                
+                # 2. ТВОИ ГРУППЫ (3max, CO def...)
+                elif filter_mode in CUSTOM_GROUPS:
+                    if sp in CUSTOM_GROUPS[filter_mode]:
+                        is_match = True
+                
+                # 3. ПОЗИЦИИ (Early/Late)
+                elif filter_mode == "Early":
+                    # EP, UTG, MP. Исключаем защиты (обычно Early это опены), если не оговорено иное
+                    if any(x in u for x in ["EP", "UTG", "MP"]) and "DEF" not in u: is_match = True
+                    # Если нужно включить EP Def:
+                    if "EP" in u and "DEF" in u: is_match = True
+                elif filter_mode == "Late":
+                    if any(x in u for x in ["CO", "BU", "BTN", "SB"]): is_match = True
+                
+                # 4. MANUAL (выбираем потом)
+                elif filter_mode == "Manual":
+                    is_match = True
+                
+                # 5. КОНКРЕТНЫЙ СПОТ (если выбрали "BU def vs 3bet SB" напрямую)
+                elif filter_mode == sp:
+                    is_match = True
+                
+                if is_match:
+                    pool.append(f"{src}|{sc}|{sp}")
+                    
+    return pool
+
+# --- СТАНДАРТНЫЕ ФУНКЦИИ (НЕ МЕНЯЛИСЬ) ---
 @st.cache_data(ttl=0)
 def load_ranges():
     if not os.path.exists(RANGES_FILE): return {}
@@ -46,22 +116,16 @@ def save_to_history(record):
     if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
     else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
-# ФУНКЦИЯ УДАЛЕНИЯ ИСТОРИИ (НОВАЯ)
 def delete_history(days=None):
     if not os.path.exists(HISTORY_FILE): return
     df = pd.read_csv(HISTORY_FILE)
     if df.empty: return
-    
-    # Если days не передали, удаляем всё (перезаписываем пустой файл с заголовками)
-    if days is None:
-        df_new = pd.DataFrame(columns=df.columns)
+    if days is None: df_new = pd.DataFrame(columns=df.columns)
     else:
-        # Оставляем только старые записи
         df["Date"] = pd.to_datetime(df["Date"])
         now = datetime.now()
         cutoff = now - timedelta(days=days)
         df_new = df[df["Date"] < cutoff]
-        
     df_new.to_csv(HISTORY_FILE, index=False)
 
 def update_srs_smart(spot_id, hand, rating):
@@ -74,7 +138,6 @@ def update_srs_smart(spot_id, hand, rating):
     data[key] = int(max(1, min(w, 2000)))
     save_srs_data(data)
 
-# ЛОГИКА ВЕСОВ
 def get_weight(hand, range_str):
     if not range_str or not isinstance(range_str, str): return 0.0
     cleaned = range_str.replace('\n', ' ').replace('\r', '')
@@ -115,29 +178,22 @@ def format_hand_colored(hand_str):
     return h
 
 def render_range_matrix(spot_data, target_hand=None):
-    # Защита от дурака: превращаем строку в словарь, если пришла строка
     if isinstance(spot_data, str): spot_data = {"full": spot_data}
     if not isinstance(spot_data, dict): spot_data = {}
-
     r_call = spot_data.get("call", "")
     r_4bet = spot_data.get("4bet", "")
     r_full = spot_data.get("full", "")
-    
     grid_html = '<div style="display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:#111;padding:1px;border:1px solid #444;">'
-    
     for r1 in RANKS:
         for r2 in RANKS:
             if RANKS.index(r1) == RANKS.index(r2): h = r1 + r2
             elif RANKS.index(r1) < RANKS.index(r2): h = r1 + r2 + 's'
             else: h = r2 + r1 + 'o'
-            
             w_c = get_weight(h, r_call)
             w_4 = get_weight(h, r_4bet)
             w_f = get_weight(h, r_full)
-            
             style = "aspect-ratio:1;display:flex;justify-content:center;align-items:center;font-size:7px;cursor:default;color:#fff;"
             bg = "#2c3034"
-            
             if w_4 > 0 or w_c > 0:
                 if w_4 > 0 and w_c > 0: bg = "linear-gradient(135deg, #d63384 50%, #28a745 50%)"
                 elif w_4 > 0 and w_4 < 100: bg = "linear-gradient(135deg, #d63384 50%, #2c3034 50%)"
@@ -147,13 +203,8 @@ def render_range_matrix(spot_data, target_hand=None):
             elif w_f > 0:
                 if w_f < 100: bg = "linear-gradient(135deg, #28a745 50%, #2c3034 50%)"
                 else: bg = "#28a745"
-            else:
-                style += "color:#495057;"
-            
+            else: style += "color:#495057;"
             style += f"background:{bg};"
-            if target_hand and h == target_hand:
-                style += "border:1.5px solid #ffc107;z-index:10;box-shadow: 0 0 4px #ffc107;"
-            
+            if target_hand and h == target_hand: style += "border:1.5px solid #ffc107;z-index:10;box-shadow: 0 0 4px #ffc107;"
             grid_html += f'<div style="{style}">{h}</div>'
-            
     return grid_html + '</div>'
