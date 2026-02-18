@@ -18,27 +18,31 @@ for i, r1 in enumerate(RANKS):
         if i < j: ALL_HANDS.append(r1 + r2 + 's'); ALL_HANDS.append(r1 + r2 + 'o')
         elif i == j: ALL_HANDS.append(r1 + r2)
 
-# --- РАЗМЕРЫ СТАВОК (BET SIZES) ---
-# Format: "Spot Name": (Hero_BB, Villain_BB)
+# --- РАЗМЕРЫ СТАВОК (Герой, Злодей) ---
 BET_SIZES_MAP = {
+    # CO vs ...
     "CO def vs 3bet BU": (2.5, 7.5),
     "CO def vs 3bet SB": (2.5, 12),
     "CO def vs 3bet BB": (2.5, 12),
+    
+    # BU vs ...
     "BU def vs 3bet SB": (2.5, 12),
     "BU def vs 3bet BB": (2.5, 12),
+    
+    # SB vs ...
     "SB def vs 3bet BB": (3.0, 9),
     
-    # Добавил логичные дефолты для EP, чтобы там тоже было красиво (можешь поправить)
+    # EP (Дефолтные значения для красоты, если понадобятся)
     "EP OOP vs 3bet MP": (2.5, 7.5),
     "EP OOP vs 3bet CO/BU": (2.5, 7.5),
     "EP IP vs 3bet Blinds": (2.5, 12),
 }
 
 def get_bet_sizes(spot_name):
-    """Возвращает кортеж (Hero_Size, Villain_Size) или (None, None)"""
+    """Возвращает (Hero_BB, Villain_BB). Если нет данных, возвращает (None, None)."""
     return BET_SIZES_MAP.get(spot_name, (None, None))
 
-# --- ГРУППЫ СПОТОВ ---
+# --- ГРУППЫ И ФИЛЬТРЫ ---
 GROUPS_DEFINITIONS = {
     "3max": [
         "BU def vs 3bet SB",
@@ -53,15 +57,11 @@ GROUPS_DEFINITIONS = {
 }
 
 SINGLE_SPOTS_FILTERS = [
-    "CO def vs 3bet BU",
-    "CO def vs 3bet SB",
-    "CO def vs 3bet BB",
-    "BU def vs 3bet SB",
-    "BU def vs 3bet BB",
+    "CO def vs 3bet BU", "CO def vs 3bet SB", "CO def vs 3bet BB",
+    "BU def vs 3bet SB", "BU def vs 3bet BB",
     "SB def vs 3bet BB"
 ]
 
-# --- ЛОГИКА ФИЛЬТРАЦИИ ---
 def get_filter_options():
     options = ["All"]
     options.extend(list(GROUPS_DEFINITIONS.keys()))
@@ -77,6 +77,7 @@ def get_filtered_pool(ranges_db, selected_sources, selected_scenarios, filter_mo
             for sp in ranges_db[src][sc]:
                 u = sp.upper()
                 is_match = False
+                
                 if filter_mode == "All": is_match = True
                 elif filter_mode in GROUPS_DEFINITIONS:
                     if sp in GROUPS_DEFINITIONS[filter_mode]: is_match = True
@@ -91,7 +92,7 @@ def get_filtered_pool(ranges_db, selected_sources, selected_scenarios, filter_mo
                 if is_match: pool.append(f"{src}|{sc}|{sp}")
     return pool
 
-# --- STANDARD FUNCTIONS ---
+# --- СТАНДАРТНЫЕ ФУНКЦИИ ---
 @st.cache_data(ttl=0)
 def load_ranges():
     if not os.path.exists(RANGES_FILE): return {}
