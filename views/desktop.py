@@ -53,16 +53,33 @@ def show():
         avail_sc = set()
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
-        mode = st.selectbox("Positions", ["All", "Early", "Late", "Manual"], index=["All", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
+        
+        # ДОБАВИЛ '3max'
+        mode = st.selectbox("Positions", ["All", "3max", "Early", "Late", "Manual"], index=["All", "3max", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
         
         pool = []
+        # 3-MAX SPOTS
+        spots_3max = ["BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB"]
+
         for src in sel_src:
             for sc in sel_sc:
                 if sc in ranges_db[src]:
                     for sp in ranges_db[src][sc]:
                         u = sp.upper()
-                        if mode=="All" or (mode=="Early" and any(x in u for x in ["EP","UTG","MP"])) or (mode=="Late" and any(x in u for x in ["CO","BU","BTN","SB"])) or mode=="Manual":
+                        # НОВАЯ ЛОГИКА
+                        is_match = False
+                        if mode == "All": is_match = True
+                        elif mode == "3max": 
+                            if sp in spots_3max: is_match = True
+                        elif mode == "Early":
+                            if any(x in u for x in ["EP","UTG","MP"]): is_match = True
+                        elif mode == "Late":
+                            if any(x in u for x in ["CO","BU","BTN","SB"]): is_match = True
+                        elif mode == "Manual": is_match = True
+                        
+                        if is_match:
                             pool.append(f"{src}|{sc}|{sp}")
+        
         if mode == "Manual" and pool: sp_man = st.selectbox("Select Spot", pool); pool = [sp_man]
         if st.button("Apply"): utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode}); st.session_state.hand = None; st.rerun()
 
@@ -121,12 +138,14 @@ def show():
         is_3bet_pot = "3bet" in sc or "Def" in sc
         villain_pos = None
         if is_3bet_pot:
-            if "vs MP" in sp: villain_pos = "MP"
-            elif "vs CO" in sp: villain_pos = "CO"
-            elif "vs BU" in sp or "vs BTN" in sp: villain_pos = "BTN"
-            elif "vs SB" in sp: villain_pos = "SB"
-            elif "vs BB" in sp: villain_pos = "BB"
-            elif "vs Blinds" in sp: villain_pos = random.choice(["SB", "BB"])
+            # Улучшенный парсинг
+            parts = sp.split()
+            if "vs 3bet" in sp:
+                villain_pos = parts[-1]
+                if "/" in villain_pos: villain_pos = "BTN" if "BU" in villain_pos else "CO"
+                if villain_pos == "BU": villain_pos = "BTN"
+            elif "Blinds" in sp:
+                villain_pos = random.choice(["SB", "BB"])
 
         opp_html = ""; chips_html = ""
         def get_pos_style(idx):
@@ -233,6 +252,7 @@ def show():
 
     with col_right:
         if st.session_state.srs_mode:
+            st.markdown(f"**{sp}** Range ({correct_act})")
             st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.markdown("<div style='text-align:center;color:#555;margin-top:150px;'>Matrix hidden</div>", unsafe_allow_html=True)
