@@ -48,43 +48,23 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
         
-        # --- ФИЛЬТРЫ ---
-        filter_options = ["All", "3max", "CO def vs 3bet", "Early", "Late", "Manual"]
+        # --- ФИЛЬТРЫ ИЗ UTILS ---
+        filter_options = utils.get_filter_options()
         saved_mode = saved.get("mode", "All")
         idx_mode = filter_options.index(saved_mode) if saved_mode in filter_options else 0
         mode = st.selectbox("Positions", filter_options, index=idx_mode)
         
-        pool = []
-        spots_3max = ["BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB"]
-        spots_co_def = ["CO def vs 3bet BU", "CO def vs 3bet SB", "CO def vs 3bet BB"]
+        if st.button("Apply"):
+            utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
+            st.session_state.hand = None; st.rerun()
 
-        for src in sel_src:
-            for sc in sel_sc:
-                if sc in ranges_db[src]:
-                    for sp in ranges_db[src][sc]:
-                        u = sp.upper()
-                        is_match = False
-                        if mode == "All": is_match = True
-                        elif mode == "3max": 
-                            if sp in spots_3max: is_match = True
-                        elif mode == "CO def vs 3bet":
-                            if sp in spots_co_def: is_match = True
-                        elif mode == "Early":
-                            if any(x in u for x in ["EP","UTG","MP"]) and "DEF" not in u: is_match = True
-                            if "EP" in u and "DEF" in u: is_match = True
-                        elif mode == "Late":
-                            if any(x in u for x in ["CO","BU","BTN","SB"]): is_match = True
-                        elif mode == "Manual": is_match = True
-                        
-                        if is_match:
-                            pool.append(f"{src}|{sc}|{sp}")
-        
-        if not pool:
-            st.warning(f"⚠️ Нет раздач для фильтра: {mode}")
-            st.stop()
+    pool = utils.get_filtered_pool(ranges_db, sel_src, sel_sc, mode)
 
-        if mode == "Manual" and pool: sp_man = st.selectbox("Select Spot", pool); pool = [sp_man]
-        if st.button("Apply"): utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode}); st.session_state.hand = None; st.rerun()
+    if not pool:
+        st.warning(f"⚠️ Нет раздач для фильтра: {mode}")
+        st.stop()
+
+    if mode == "Manual" and pool: sp_man = st.selectbox("Select Spot", pool); pool = [sp_man]
 
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
@@ -96,7 +76,7 @@ def show():
         st.session_state.current_spot_key = chosen
         src, sc, sp = chosen.split('|')
         data = ranges_db[src][sc][sp]
-        t_range = data.get("source", data.get("training", data.get("full", "")))
+        t_range = data.get("training", data.get("source", data.get("full", "")))
         poss = utils.parse_range_to_list(t_range)
         srs = utils.load_srs_data()
         w = [srs.get(f"{src}_{sc}_{sp}_{h}".replace(" ","_"), 100) for h in poss]
@@ -254,7 +234,6 @@ def show():
 
     with col_right:
         if st.session_state.srs_mode:
-            st.markdown(f"**{sp}** Range ({correct_act})")
             st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.markdown("<div style='text-align:center;color:#555;margin-top:150px;'>Matrix hidden</div>", unsafe_allow_html=True)
