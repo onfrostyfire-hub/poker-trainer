@@ -4,6 +4,7 @@ from datetime import datetime
 import utils
 
 def show():
+    # --- CSS ---
     st.markdown("""
     <style>
         .block-container { padding-top: 3rem !important; padding-bottom: 5rem !important; }
@@ -28,6 +29,7 @@ def show():
         .chip-mob { width: 14px; height: 14px; background: #111; border: 2px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.8); }
         .chip-3bet { width: 16px; height: 16px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.8); }
         .dealer-mob { width: 16px; height: 16px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 9px; display: flex; justify-content: center; align-items: center; border: 1px solid #bfa006; position: absolute; z-index: 11; }
+        .bet-txt { font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; background: rgba(0,0,0,0.6); padding: 1px 3px; border-radius: 4px; margin-top: -5px; z-index: 20; }
         .hero-mob { position: absolute; bottom: -20px; left: 50%; transform: translateX(-50%); display: flex; gap: 5px; z-index: 20; background: #222; padding: 5px 10px; border-radius: 12px; border: 1px solid #ffc107; }
         .card-mob { width: 45px; height: 64px; background: white; border-radius: 4px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
         .tl-mob { position: absolute; top: 1px; left: 3px; font-weight: bold; font-size: 14px; line-height: 1; }
@@ -49,7 +51,6 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
         
-        # --- БЕРЕМ ОПЦИИ ИЗ UTILS ---
         filter_options = utils.get_filter_options()
         saved_mode = saved.get("mode", "All")
         idx_mode = filter_options.index(saved_mode) if saved_mode in filter_options else 0
@@ -59,16 +60,13 @@ def show():
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
-    # --- ПОЛУЧАЕМ ПУЛ ЧЕРЕЗ UTILS ---
     pool = utils.get_filtered_pool(ranges_db, sel_src, sel_sc, mode)
-
     if not pool:
         st.warning(f"⚠️ Нет раздач для фильтра: {mode}")
         st.stop()
 
-    if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
+    if mode == "Manual" and pool: sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
-    # --- ДАЛЕЕ СТАНДАРТНАЯ ЛОГИКА (НЕ МЕНЯЕТСЯ) ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
@@ -110,7 +108,6 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
-    # --- TABLE LOGIC (БЕЗ ИЗМЕНЕНИЙ) ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -131,6 +128,9 @@ def show():
             if villain_pos == "BU": villain_pos = "BTN"
         elif "Blinds" in sp:
             villain_pos = random.choice(["SB", "BB"])
+
+    # ПОЛУЧАЕМ РАЗМЕРЫ СТАВОК ИЗ UTILS
+    hero_bet, villain_bet = utils.get_bet_sizes(sp)
 
     opp_html = ""; chips_html = ""
     def get_pos_style(idx):
@@ -153,16 +153,27 @@ def show():
         cards = '<div class="opp-cards-mob"></div>' if is_act else ""
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
         s = get_pos_style(i)
-        if c_type == "blind": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-mob"></div></div>'
-        elif c_type == "3bet": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-12px;"></div><div class="chip-3bet" style="margin-top:-12px;"></div></div>'
+        
+        # --- ОТРИСОВКА ФИШЕК И ТЕКСТА ---
+        if c_type == "blind": 
+            chips_html += f'<div class="chip-container" style="{s}"><div class="chip-mob"></div></div>'
+        elif c_type == "3bet": 
+            # Добавляем текст, если есть инфа о ставке
+            bet_txt = f'<div class="bet-txt">{villain_bet}bb</div>' if villain_bet else ""
+            chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-12px;"></div>{bet_txt}</div>'
+        
         if p == "BTN":
             bs = get_btn_style(i)
             chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
     hs = get_pos_style(0)
-    if is_3bet_pot: chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px;"></div></div>'
-    elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div></div>'
-    if rot[0] == "BTN":
+    if is_3bet_pot:
+        # У Хиро тоже подписываем ставку
+        bet_txt = f'<div class="bet-txt">{hero_bet}bb</div>' if hero_bet else ""
+        chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px;"></div>{bet_txt}</div>'
+    elif rot[0] in ["SB", "BB"]: 
+        chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div></div>'
+    if rot[0] == "BTN": 
         bs = get_btn_style(0)
         chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
