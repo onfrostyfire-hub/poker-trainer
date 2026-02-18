@@ -57,19 +57,40 @@ def show():
         avail_sc = set()
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
-        mode = st.selectbox("Positions", ["All", "Early", "Late", "Manual"], index=["All", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
+        
+        # ДОБАВИЛ '3max'
+        mode = st.selectbox("Positions", ["All", "3max", "Early", "Late", "Manual"], index=["All", "3max", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
+        
         if st.button("🚀 Apply"):
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
     pool = []
+    # 3-MAX SPOTS
+    spots_3max = ["BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB"]
+
     for src in sel_src:
         for sc in sel_sc:
             if sc in ranges_db[src]:
                 for sp in ranges_db[src][sc]:
                     u = sp.upper()
-                    m = (mode=="All" or (mode=="Early" and any(x in u for x in ["EP","UTG","MP"])) or (mode=="Late" and any(x in u for x in ["CO","BU","BTN","SB"])) or mode=="Manual")
-                    if m: pool.append(f"{src}|{sc}|{sp}")
+                    
+                    # НОВАЯ ЛОГИКА ФИЛЬТРАЦИИ
+                    is_match = False
+                    if mode == "All":
+                        is_match = True
+                    elif mode == "3max":
+                        if sp in spots_3max: is_match = True
+                    elif mode == "Early":
+                        if any(x in u for x in ["EP","UTG","MP"]): is_match = True
+                    elif mode == "Late":
+                        if any(x in u for x in ["CO","BU","BTN","SB"]): is_match = True
+                    elif mode == "Manual":
+                        is_match = True # Выбор дальше
+                    
+                    if is_match:
+                        pool.append(f"{src}|{sc}|{sp}")
+
     if not pool: st.error("No spots"); return
     if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
@@ -114,6 +135,7 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
+    # --- TABLE LOGIC ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -124,15 +146,21 @@ def show():
     elif "BB" in u: hero_idx = 5
     rot = order[hero_idx:] + order[:hero_idx]
 
+    # Определяем 3бет-пот и позиции
     is_3bet_pot = "3bet" in sc or "Def" in sc
     villain_pos = None
     if is_3bet_pot:
-        if "vs MP" in sp: villain_pos = "MP"
-        elif "vs CO" in sp: villain_pos = "CO"
-        elif "vs BU" in sp or "vs BTN" in sp: villain_pos = "BTN"
-        elif "vs SB" in sp: villain_pos = "SB"
-        elif "vs BB" in sp: villain_pos = "BB"
-        elif "vs Blinds" in sp: villain_pos = random.choice(["SB", "BB"])
+        # Улучшенный парсинг для новых названий (например "CO def vs 3bet BU")
+        # Ищем позицию злодея в конце строки
+        parts = sp.split() 
+        # Обычно формат: "HERO def vs 3bet VILLAIN"
+        if "vs 3bet" in sp:
+            villain_pos = parts[-1] # Берем последнее слово
+            # Если там слэш (CO/BU), берем BU
+            if "/" in villain_pos: villain_pos = "BTN" if "BU" in villain_pos else "CO"
+            if villain_pos == "BU": villain_pos = "BTN"
+        elif "Blinds" in sp:
+            villain_pos = random.choice(["SB", "BB"])
 
     opp_html = ""; chips_html = ""
     def get_pos_style(idx):
@@ -146,18 +174,22 @@ def show():
     for i in range(1, 6):
         p = rot[i]
         is_act = False; c_type = "none"
+        
         if is_3bet_pot:
             if p == villain_pos: is_act = True; c_type = "3bet"
             elif p in ["SB", "BB"]: c_type = "blind"
         else:
             if order.index(p) > order.index(rot[0]) or (rot[0]=="SB" and p=="BB"):
                 is_act = True; c_type = "blind" if p in ["SB","BB"] else "none"
+        
         cls = "seat-active" if is_act else "seat-folded"
         cards = '<div class="opp-cards-mob"></div>' if is_act else ""
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
+        
         s = get_pos_style(i)
         if c_type == "blind": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-mob"></div></div>'
         elif c_type == "3bet": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-12px;"></div><div class="chip-3bet" style="margin-top:-12px;"></div></div>'
+        
         if p == "BTN":
             bs = get_btn_style(i)
             chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
@@ -193,7 +225,7 @@ def show():
                 if st.button("FOLD", key="f", use_container_width=True):
                     corr = (correct_act == "FOLD")
                     st.session_state.last_error = not corr
-                    st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                    st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                     utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                     st.session_state.srs_mode = True; st.rerun()
                 st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[0].classList.add("fold-btn");</script>', unsafe_allow_html=True)
@@ -201,7 +233,7 @@ def show():
                 if st.button("CALL", key="c", use_container_width=True):
                     corr = (correct_act == "CALL")
                     st.session_state.last_error = not corr
-                    st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                    st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                     utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                     st.session_state.srs_mode = True; st.rerun()
                 st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[1].classList.add("call-btn");</script>', unsafe_allow_html=True)
@@ -209,7 +241,7 @@ def show():
                 if st.button("4BET", key="r", use_container_width=True):
                     corr = (correct_act == "4BET")
                     st.session_state.last_error = not corr
-                    st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                    st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                     utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                     st.session_state.srs_mode = True; st.rerun()
                 st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[2].classList.add("raise-btn");</script>', unsafe_allow_html=True)
