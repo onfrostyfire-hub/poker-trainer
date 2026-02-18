@@ -67,14 +67,16 @@ def show():
 
     if mode == "Manual" and pool: sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
+    # --- ЗАЩИТА ОТ КРАША СЕССИИ ---
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
     if 'suits' not in st.session_state: st.session_state.suits = None
     if 'srs_mode' not in st.session_state: st.session_state.srs_mode = False
     if 'last_error' not in st.session_state: st.session_state.last_error = False
     if 'msg' not in st.session_state: st.session_state.msg = None
+    if 'current_spot_key' not in st.session_state: st.session_state.current_spot_key = None # ВАЖНО!
 
-    if st.session_state.hand is None:
+    if st.session_state.hand is None or st.session_state.current_spot_key is None:
         chosen = random.choice(pool)
         st.session_state.current_spot_key = chosen
         src, sc, sp = chosen.split('|')
@@ -108,6 +110,7 @@ def show():
     c1 = "suit-red" if s1 in '♥' else "suit-blue" if s1 in '♦' else "suit-black"
     c2 = "suit-red" if s2 in '♥' else "suit-blue" if s2 in '♦' else "suit-black"
 
+    # --- TABLE LOGIC ---
     order = ["EP", "MP", "CO", "BTN", "SB", "BB"]
     hero_idx = 0; u = sp.upper()
     if any(p in u for p in ["EP", "UTG"]): hero_idx = 0
@@ -129,8 +132,11 @@ def show():
         elif "Blinds" in sp:
             villain_pos = random.choice(["SB", "BB"])
 
-    # ПОЛУЧАЕМ РАЗМЕРЫ СТАВОК ИЗ UTILS
-    hero_bet, villain_bet = utils.get_bet_sizes(sp)
+    # ПОЛУЧАЕМ РАЗМЕРЫ СТАВОК (SAFE CALL)
+    try:
+        hero_bet, villain_bet = utils.get_bet_sizes(sp)
+    except:
+        hero_bet, villain_bet = None, None
 
     opp_html = ""; chips_html = ""
     def get_pos_style(idx):
@@ -154,11 +160,9 @@ def show():
         opp_html += f'<div class="seat m-pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
         s = get_pos_style(i)
         
-        # --- ОТРИСОВКА ФИШЕК И ТЕКСТА ---
         if c_type == "blind": 
             chips_html += f'<div class="chip-container" style="{s}"><div class="chip-mob"></div></div>'
         elif c_type == "3bet": 
-            # Добавляем текст, если есть инфа о ставке
             bet_txt = f'<div class="bet-txt">{villain_bet}bb</div>' if villain_bet else ""
             chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-12px;"></div>{bet_txt}</div>'
         
@@ -167,13 +171,12 @@ def show():
             chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
     hs = get_pos_style(0)
-    if is_3bet_pot:
-        # У Хиро тоже подписываем ставку
+    if is_3bet_pot: 
         bet_txt = f'<div class="bet-txt">{hero_bet}bb</div>' if hero_bet else ""
         chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div><div class="chip-mob" style="margin-top:-5px;"></div>{bet_txt}</div>'
     elif rot[0] in ["SB", "BB"]: 
         chips_html += f'<div class="chip-container" style="{hs}"><div class="chip-mob"></div></div>'
-    if rot[0] == "BTN": 
+    if rot[0] == "BTN":
         bs = get_btn_style(0)
         chips_html += f'<div class="dealer-mob" style="{bs}">D</div>'
 
