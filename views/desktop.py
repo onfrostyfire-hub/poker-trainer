@@ -22,6 +22,7 @@ def show():
         .poker-chip { width: 22px; height: 22px; background: #222; border: 3px dashed #d32f2f; border-radius: 50%; box-shadow: 1px 1px 2px rgba(0,0,0,0.7); }
         .chip-3bet { width: 24px; height: 24px; background: #d32f2f; border: 2px solid #fff; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,0.6); }
         .dealer-button { width: 24px; height: 24px; background: #ffc107; border-radius: 50%; color: #000; font-weight: bold; font-size: 11px; display: flex; justify-content: center; align-items: center; z-index: 15; position: absolute; }
+        .bet-txt { font-size: 10px; font-weight: bold; color: #fff; text-shadow: 1px 1px 2px #000; background: rgba(0,0,0,0.6); padding: 1px 3px; border-radius: 4px; margin-top: -5px; z-index: 20; }
         .hero-panel { position: absolute; bottom: -45px; left: 50%; transform: translateX(-50%); background: #212529; border: 2px solid #ffc107; border-radius: 12px; padding: 6px 18px; display: flex; gap: 8px; z-index: 10; align-items: center; }
         .card { width: 50px; height: 70px; background: white; border-radius: 5px; position: relative; color: black; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
         .tl { position: absolute; top: 2px; left: 4px; font-weight: bold; font-size: 16px; }
@@ -48,7 +49,6 @@ def show():
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
         
-        # --- ФИЛЬТРЫ ИЗ UTILS ---
         filter_options = utils.get_filter_options()
         saved_mode = saved.get("mode", "All")
         idx_mode = filter_options.index(saved_mode) if saved_mode in filter_options else 0
@@ -129,6 +129,8 @@ def show():
             elif "Blinds" in sp:
                 villain_pos = random.choice(["SB", "BB"])
 
+        hero_bet, villain_bet = utils.get_bet_sizes(sp)
+
         opp_html = ""; chips_html = ""
         def get_pos_style(idx):
             return {0: "bottom:28%;left:47%;", 1: "bottom:28%;left:22%;", 2: "top:28%;left:22%;", 
@@ -150,15 +152,23 @@ def show():
             cards = '<div class="opp-cards"></div>' if is_act else ""
             opp_html += f'<div class="seat pos-{i} {cls}">{cards}<span class="seat-label">{p}</span></div>'
             s = get_pos_style(i)
-            if c_type == "blind": chips_html += f'<div class="chip-container" style="{s}"><div class="poker-chip"></div></div>'
-            elif c_type == "3bet": chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet"></div><div class="chip-3bet" style="margin-top:-15px;"></div></div>'
+            
+            if c_type == "blind": 
+                chips_html += f'<div class="chip-container" style="{s}"><div class="poker-chip"></div></div>'
+            elif c_type == "3bet": 
+                bet_txt = f'<div class="bet-txt">{villain_bet}bb</div>' if villain_bet else ""
+                chips_html += f'<div class="chip-container" style="{s}"><div class="chip-3bet-desk"></div><div class="chip-3bet-desk" style="margin-top:-15px;"></div>{bet_txt}</div>'
+            
             if p == "BTN":
                 bs = get_btn_style(i)
                 chips_html += f'<div class="dealer-button" style="{bs}">D</div>'
 
         hs = get_pos_style(0)
-        if is_3bet_pot: chips_html += f'<div class="chip-container" style="{hs}"><div class="poker-chip"></div><div class="poker-chip" style="margin-top:-10px"></div></div>'
-        elif rot[0] in ["SB", "BB"]: chips_html += f'<div class="chip-container" style="{hs}"><div class="poker-chip"></div></div>'
+        if is_3bet_pot: 
+            bet_txt = f'<div class="bet-txt">{hero_bet}bb</div>' if hero_bet else ""
+            chips_html += f'<div class="chip-container" style="{hs}"><div class="poker-chip"></div><div class="poker-chip" style="margin-top:-10px"></div>{bet_txt}</div>'
+        elif rot[0] in ["SB", "BB"]: 
+            chips_html += f'<div class="chip-container" style="{hs}"><div class="poker-chip"></div></div>'
         if rot[0] == "BTN":
             bs = get_btn_style(0)
             chips_html += f'<div class="dealer-button" style="{bs}">D</div>'
@@ -202,7 +212,7 @@ def show():
                     if st.button("4BET"):
                         corr = (correct_act == "4BET")
                         st.session_state.last_error = not corr
-                        st.session_state.msg = "✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
+                        st.session_state.msg = f"✅ Correct" if corr else f"❌ Err! RNG {rng} -> {correct_act}"
                         utils.save_to_history({"Date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"), "Spot": sp, "Hand": f"{h_val}", "Result": int(corr), "CorrectAction": correct_act})
                         st.session_state.srs_mode = True; st.rerun()
                     st.markdown('<script>parent.document.querySelectorAll("div[data-testid=\'column\'] button")[2].classList.add("raise-btn");</script>', unsafe_allow_html=True)
@@ -234,6 +244,7 @@ def show():
 
     with col_right:
         if st.session_state.srs_mode:
+            st.markdown(f"**{sp}** Range ({correct_act})")
             st.markdown(utils.render_range_matrix(data, st.session_state.hand), unsafe_allow_html=True)
         else:
             st.markdown("<div style='text-align:center;color:#555;margin-top:150px;'>Matrix hidden</div>", unsafe_allow_html=True)
