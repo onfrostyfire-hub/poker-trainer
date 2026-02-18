@@ -49,39 +49,54 @@ def show():
         avail_sc = set()
         for s in sel_src: avail_sc.update(ranges_db[s].keys())
         sel_sc = st.multiselect("Scenario", list(avail_sc), default=saved.get("scenarios", [list(avail_sc)[0]] if avail_sc else []))
-        mode = st.selectbox("Positions", ["All", "3max", "Early", "Late", "Manual"], index=["All", "3max", "Early", "Late", "Manual"].index(saved.get("mode", "All")))
+        
+        # --- ФИЛЬТРЫ ---
+        filter_options = ["All", "3max", "CO def vs 3bet", "Early", "Late", "Manual"]
+        # Безопасный индекс
+        saved_mode = saved.get("mode", "All")
+        idx_mode = filter_options.index(saved_mode) if saved_mode in filter_options else 0
+        mode = st.selectbox("Positions", filter_options, index=idx_mode)
+        
         if st.button("🚀 Apply"):
             utils.save_user_settings({"sources": sel_src, "scenarios": sel_sc, "mode": mode})
             st.session_state.hand = None; st.rerun()
 
     pool = []
+    # --- СПИСКИ ГРУПП ---
     spots_3max = ["BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB"]
+    spots_co_def = ["CO def vs 3bet BU", "CO def vs 3bet SB", "CO def vs 3bet BB"]
 
     for src in sel_src:
         for sc in sel_sc:
             if sc in ranges_db[src]:
                 for sp in ranges_db[src][sc]:
                     u = sp.upper()
+                    
+                    # --- ЛОГИКА ФИЛЬТРАЦИИ ---
                     is_match = False
-                    if mode == "All": is_match = True
+                    if mode == "All":
+                        is_match = True
                     elif mode == "3max":
                         if sp in spots_3max: is_match = True
+                    elif mode == "CO def vs 3bet":
+                        if sp in spots_co_def: is_match = True
                     elif mode == "Early":
-                        if any(x in u for x in ["EP","UTG","MP"]): is_match = True
+                        if any(x in u for x in ["EP","UTG","MP"]) and "DEF" not in u: is_match = True
+                        # Добавляем EP Def если нужно, но обычно Early это EP/MP Open
+                        if "EP" in u and "DEF" in u: is_match = True
                     elif mode == "Late":
                         if any(x in u for x in ["CO","BU","BTN","SB"]): is_match = True
-                    elif mode == "Manual": is_match = True
+                    elif mode == "Manual":
+                        is_match = True 
                     
                     if is_match:
                         pool.append(f"{src}|{sc}|{sp}")
 
-    # ЗАЩИТА ОТ ПУСТОГО ПУЛА
     if not pool:
-        st.warning("⚠️ Нет раздач для выбранных фильтров.")
-        st.info("Попробуй сменить фильтр позиций или сценарий.")
+        st.warning(f"⚠️ Нет раздач для фильтра: {mode}")
         st.stop()
 
-    if mode == "Manual" and pool: sp_man = st.selectbox("Spot", pool); pool = [sp_man]
+    if mode == "Manual": sp_man = st.selectbox("Spot", pool); pool = [sp_man]
 
     if 'hand' not in st.session_state: st.session_state.hand = None
     if 'rng' not in st.session_state: st.session_state.rng = 0
@@ -138,9 +153,10 @@ def show():
     is_3bet_pot = "3bet" in sc or "Def" in sc
     villain_pos = None
     if is_3bet_pot:
+        # Парсинг оппонента
         parts = sp.split()
         if "vs 3bet" in sp:
-            villain_pos = parts[-1]
+            villain_pos = parts[-1] # Берем последнее слово (BU, SB, BB)
             if "/" in villain_pos: villain_pos = "BTN" if "BU" in villain_pos else "CO"
             if villain_pos == "BU": villain_pos = "BTN"
         elif "Blinds" in sp:
@@ -150,7 +166,6 @@ def show():
     def get_pos_style(idx):
         return {0: "bottom:28%;left:47%;", 1: "bottom:28%;left:22%;", 2: "top:28%;left:22%;", 
                 3: "top:12%;left:47%;", 4: "top:28%;right:22%;", 5: "bottom:28%;right:22%;"}.get(idx, "")
-    
     def get_btn_style(idx):
         return {0: "bottom:25%;left:55%;", 1: "bottom:25%;left:18%;", 2: "top:25%;left:18%;", 
                 3: "top:10%;left:55%;", 4: "top:25%;right:18%;", 5: "bottom:25%;right:18%;"}.get(idx, "")
