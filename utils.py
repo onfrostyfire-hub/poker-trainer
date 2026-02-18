@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import os
 import random
+from datetime import datetime, timedelta
 
 # КОНСТАНТЫ
 HISTORY_FILE = 'history_log.csv'
@@ -45,6 +46,24 @@ def save_to_history(record):
     if not os.path.exists(HISTORY_FILE): df_new.to_csv(HISTORY_FILE, index=False)
     else: df_new.to_csv(HISTORY_FILE, mode='a', header=False, index=False)
 
+# ФУНКЦИЯ УДАЛЕНИЯ ИСТОРИИ (НОВАЯ)
+def delete_history(days=None):
+    if not os.path.exists(HISTORY_FILE): return
+    df = pd.read_csv(HISTORY_FILE)
+    if df.empty: return
+    
+    # Если days не передали, удаляем всё (перезаписываем пустой файл с заголовками)
+    if days is None:
+        df_new = pd.DataFrame(columns=df.columns)
+    else:
+        # Оставляем только старые записи
+        df["Date"] = pd.to_datetime(df["Date"])
+        now = datetime.now()
+        cutoff = now - timedelta(days=days)
+        df_new = df[df["Date"] < cutoff]
+        
+    df_new.to_csv(HISTORY_FILE, index=False)
+
 def update_srs_smart(spot_id, hand, rating):
     data = load_srs_data()
     key = f"{spot_id}_{hand}"
@@ -57,9 +76,7 @@ def update_srs_smart(spot_id, hand, rating):
 
 # ЛОГИКА ВЕСОВ
 def get_weight(hand, range_str):
-    # ЗАЩИТА ОТ ОШИБКИ: Если range_str не строка (например None или словарь), возвращаем 0
     if not range_str or not isinstance(range_str, str): return 0.0
-    
     cleaned = range_str.replace('\n', ' ').replace('\r', '')
     items = [x.strip() for x in cleaned.split(',')]
     for item in items:
@@ -70,7 +87,6 @@ def get_weight(hand, range_str):
         else:
             h_part = item
             weight = 100.0
-            
         if h_part == hand: return weight
         if len(h_part) == 2 and h_part[0] != h_part[1] and hand.startswith(h_part): return weight
     return 0.0
@@ -90,6 +106,7 @@ def parse_range_to_list(range_str):
     return list(set(hand_list))
 
 def format_hand_colored(hand_str):
+    if not isinstance(hand_str, str): return str(hand_str)
     if not any(s in hand_str for s in ['♠','♥','♦','♣']): return hand_str
     h = hand_str.replace('♠', '<span style="color:#e0e0e0">♠</span>')
     h = h.replace('♥', '<span style="color:#ff6b6b">♥</span>')
@@ -97,22 +114,14 @@ def format_hand_colored(hand_str):
     h = h.replace('♣', '<span style="color:#69db7c">♣</span>')
     return h
 
-def get_chip_style(seat_index):
-    # Координаты для фишек (универсальные)
-    pos = {0: "bottom:25%;left:47%;", 1: "bottom:25%;left:22%;", 2: "top:25%;left:22%;", 3: "top:10%;left:47%;", 4: "top:25%;right:22%;", 5: "bottom:25%;right:22%;"}
-    return pos.get(seat_index, "")
-
-# ОТРИСОВКА МАТРИЦЫ (С УЧЕТОМ ЦВЕТОВ)
 def render_range_matrix(spot_data, target_hand=None):
-    # Если вдруг передали строку по старинке - превращаем её в словарь
-    if isinstance(spot_data, str):
-        spot_data = {"full": spot_data}
-    if not isinstance(spot_data, dict):
-        spot_data = {}
+    # Защита от дурака: превращаем строку в словарь, если пришла строка
+    if isinstance(spot_data, str): spot_data = {"full": spot_data}
+    if not isinstance(spot_data, dict): spot_data = {}
 
     r_call = spot_data.get("call", "")
     r_4bet = spot_data.get("4bet", "")
-    r_full = spot_data.get("full", "") # Fallback для Open Raise
+    r_full = spot_data.get("full", "")
     
     grid_html = '<div style="display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:#111;padding:1px;border:1px solid #444;">'
     
@@ -127,20 +136,14 @@ def render_range_matrix(spot_data, target_hand=None):
             w_f = get_weight(h, r_full)
             
             style = "aspect-ratio:1;display:flex;justify-content:center;align-items:center;font-size:7px;cursor:default;color:#fff;"
-            bg = "#2c3034" # Fold (Серый)
+            bg = "#2c3034"
             
-            # Приоритет цветов: 3-Bet/Call Mix -> Pure 4Bet -> Pure Call -> Open Raise
             if w_4 > 0 or w_c > 0:
-                if w_4 > 0 and w_c > 0:
-                    bg = "linear-gradient(135deg, #d63384 50%, #28a745 50%)" # Mix 4B/Call
-                elif w_4 > 0 and w_4 < 100:
-                    bg = "linear-gradient(135deg, #d63384 50%, #2c3034 50%)" # Mix 4B/Fold
-                elif w_c > 0 and w_c < 100:
-                    bg = "linear-gradient(135deg, #28a745 50%, #2c3034 50%)" # Mix Call/Fold
-                elif w_4 >= 100:
-                    bg = "#d63384" # Pure 4Bet
-                elif w_c >= 100:
-                    bg = "#28a745" # Pure Call
+                if w_4 > 0 and w_c > 0: bg = "linear-gradient(135deg, #d63384 50%, #28a745 50%)"
+                elif w_4 > 0 and w_4 < 100: bg = "linear-gradient(135deg, #d63384 50%, #2c3034 50%)"
+                elif w_c > 0 and w_c < 100: bg = "linear-gradient(135deg, #28a745 50%, #2c3034 50%)"
+                elif w_4 >= 100: bg = "#d63384"
+                elif w_c >= 100: bg = "#28a745"
             elif w_f > 0:
                 if w_f < 100: bg = "linear-gradient(135deg, #28a745 50%, #2c3034 50%)"
                 else: bg = "#28a745"
