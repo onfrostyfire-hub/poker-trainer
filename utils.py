@@ -167,7 +167,10 @@ def get_weight(hand, range_str):
     return 0.0
 
 def parse_range_to_list(range_str):
-    if not range_str or not isinstance(range_str, str): return []
+    # ПУЛЕНЕПРОБИВАЕМАЯ ЗАЩИТА: если пусто или есть "22+", выдаем всю колоду на 169 рук
+    if not range_str or not isinstance(range_str, str) or "22+" in range_str or range_str == "ALL":
+        return ALL_HANDS.copy()
+        
     hand_list = []
     cleaned = range_str.replace('\n', ' ').replace('\r', '')
     items = [x.strip() for x in cleaned.split(',')]
@@ -178,6 +181,11 @@ def parse_range_to_list(range_str):
         elif len(h) == 2:
             if h[0] == h[1]: hand_list.append(h)
             else: hand_list.extend([h+'s', h+'o'])
+            
+    # Защита от кривого синтаксиса: если ничего не нашлось, выдаем всю колоду, чтобы не крашнуться
+    if not hand_list:
+        return ALL_HANDS.copy()
+        
     return list(set(hand_list))
 
 def format_hand_colored(hand_str):
@@ -193,7 +201,7 @@ def render_range_matrix(spot_data, target_hand=None):
     if isinstance(spot_data, str): spot_data = {"full": spot_data}
     if not isinstance(spot_data, dict): spot_data = {}
     r_call = spot_data.get("call", "")
-    r_raise = spot_data.get("4bet", spot_data.get("3bet", "")) # Распознаем и 3бет, и 4бет
+    r_raise = spot_data.get("4bet", spot_data.get("3bet", "")) # Читаем и 3-беты, и 4-беты
     r_full = spot_data.get("full", "")
     
     grid_html = '<div style="display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:#111;padding:1px;border:1px solid #444;">'
