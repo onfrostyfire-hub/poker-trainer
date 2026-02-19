@@ -71,14 +71,14 @@
     },
     "BB def vs pfr NL500": {
       "BBvsBU x2.5 nl500": {
-        "source": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4,A3,A2,KQ,KJ,KT,K9,K8,K7,K6,K5,K4,K3,K2,QJ,QT,Q9,Q8,Q7,Q6,Q5,Q4,Q3,Q2,JT,J9,J8,J7,J6,J5,J4,J3,J2,T9,T8,T7,T6,T5,T4,T3,T2,98,97,96,95,94,93,92,87,86,85,84,83,82,76,75,74,73,72,65,64,63,62,54,53,52,43,42,32",
+        "source": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+,72o+,62o+,52o+,42o+,32o+",
         "call": "AA,KK,QQ,JJ,TT,99,AK,AQ,AJs,AJo:0.5,A5s,A4s,KQs,KQo:0.5,KJs,KJo:0.5,KTs:0.5,QJs,QTs,JTs,J9s,T9s,T8s,98s,87s,76s,65s,54s",
         "3bet": "88,77,66,55,44,33,22,AJo:0.5,AT,A9,A8,A7,A6s,A5o,A4o,A3s,A2s,KQo:0.5,KJo:0.5,KTs:0.5,KTo,K9,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJo,QTo,Q9,Q8s,Q7s,Q6s,Q5s,Q4s,Q3s,Q2s,JTo,J9o,J8s,J7s,J6s,J5s,J4s,J3s,J2s,T9o,T8o:0.5,T7s,T6s,98o:0.5,97s,96s,87o:0.5,86s,85s,75s,74s,64s,63s,53s,52s,43s,42s"
       }
     },
     "BB def vs pfr NL100": {
       "BBvsBU x2.5 nl100": {
-        "source": "AA,KK,QQ,JJ,TT,99,88,77,66,55,44,33,22,AK,AQ,AJ,AT,A9,A8,A7,A6,A5,A4,A3,A2,KQ,KJ,KT,K9,K8,K7,K6,K5,K4,K3,K2,QJ,QT,Q9,Q8,Q7,Q6,Q5,Q4,Q3,Q2,JT,J9,J8,J7,J6,J5,J4,J3,J2,T9,T8,T7,T6,T5,T4,T3,T2,98,97,96,95,94,93,92,87,86,85,84,83,82,76,75,74,73,72,65,64,63,62,54,53,52,43,42,32",
+        "source": "22+,A2s+,K2s+,Q2s+,J2s+,T2s+,92s+,82s+,72s+,62s+,52s+,42s+,32s+,A2o+,K2o+,Q2o+,J2o+,T2o+,92o+,82o+,72o+,62o+,52o+,42o+,32o+",
         "call": "88,77,66,55,44,33,22,AJo:0.5,AT,A9,A8,A7,A6s,A5o,A3s,A2s,KQo:0.5,KJo:0.5,KTs:0.5,KTo,K9,K8s,K7s,K6s,K5s,K4s,K3s,K2s,QJo,QTo,Q9s,Q8s,Q7s,Q6s,Q5s,Q4s,Q3s,Q2s,JTo,J8s,J7s,J6s,J5s,T9o,T7s,T6s,97s,96s,86s,85s,75s,74s,64s,53s,43s",
         "3bet": "AA,KK,QQ,JJ,TT,99,AK,AQ,AJs,AJo:0.5,A5s,A4s,KQs,KQo:0.5,KJs,KJo:0.5,KTs:0.5,QJs,QTs,JTs,J9s,T9s,T8s,98s,87s,76s,65s,54s"
       }
