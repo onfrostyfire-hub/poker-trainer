@@ -18,28 +18,25 @@ for i, r1 in enumerate(RANKS):
         if i < j: ALL_HANDS.append(r1 + r2 + 's'); ALL_HANDS.append(r1 + r2 + 'o')
         elif i == j: ALL_HANDS.append(r1 + r2)
 
-# --- РАЗМЕРЫ СТАВОК (Герой, Злодей) ---
+# --- РАЗМЕРЫ СТАВОК (Hero_BB, Villain_BB) ---
 BET_SIZES_MAP = {
-    # CO vs ...
     "CO def vs 3bet BU": (2.5, 7.5),
     "CO def vs 3bet SB": (2.5, 12),
     "CO def vs 3bet BB": (2.5, 12),
-    
-    # BU vs ...
     "BU def vs 3bet SB": (2.5, 12),
     "BU def vs 3bet BB": (2.5, 12),
-    
-    # SB vs ...
     "SB def vs 3bet BB": (3.0, 9),
     
-    # EP (Дефолтные значения для красоты, если понадобятся)
     "EP OOP vs 3bet MP": (2.5, 7.5),
     "EP OOP vs 3bet CO/BU": (2.5, 7.5),
     "EP IP vs 3bet Blinds": (2.5, 12),
+    
+    # Новые споты защиты BB
+    "BBvsBU x2.5 nl500": (1.0, 2.5), # Hero: 1bb (блайнд), Villain: 2.5bb
+    "BBvsBU x2.5 nl100": (1.0, 2.5)
 }
 
 def get_bet_sizes(spot_name):
-    """Возвращает (Hero_BB, Villain_BB). Если нет данных, возвращает (None, None)."""
     return BET_SIZES_MAP.get(spot_name, (None, None))
 
 # --- ГРУППЫ И ФИЛЬТРЫ ---
@@ -53,13 +50,19 @@ GROUPS_DEFINITIONS = {
         "CO def vs 3bet BU",
         "CO def vs 3bet SB",
         "CO def vs 3bet BB"
+    ],
+    # Новая группа для защит ББ
+    "BB Def vs Open": [
+        "BBvsBU x2.5 nl500",
+        "BBvsBU x2.5 nl100"
     ]
 }
 
 SINGLE_SPOTS_FILTERS = [
     "CO def vs 3bet BU", "CO def vs 3bet SB", "CO def vs 3bet BB",
     "BU def vs 3bet SB", "BU def vs 3bet BB",
-    "SB def vs 3bet BB"
+    "SB def vs 3bet BB",
+    "BBvsBU x2.5 nl500", "BBvsBU x2.5 nl100"
 ]
 
 def get_filter_options():
