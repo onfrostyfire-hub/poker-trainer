@@ -31,6 +31,7 @@ BET_SIZES_MAP = {
     "EP vs 3bet CO/BU": (2.5, 7.5),
     "EP vs 3bet Blinds": (2.5, 10),
     
+    # Для защиты BB: у нас 1bb (блайнд), оппонент открылся 2.5bb
     "BBvsBU x2.5 nl500": (1.0, 2.5),
     "BBvsBU x2.5 nl100": (1.0, 2.5)
 }
@@ -192,7 +193,7 @@ def render_range_matrix(spot_data, target_hand=None):
     if isinstance(spot_data, str): spot_data = {"full": spot_data}
     if not isinstance(spot_data, dict): spot_data = {}
     r_call = spot_data.get("call", "")
-    r_raise = spot_data.get("4bet", spot_data.get("3bet", "")) # Читает и 4bet, и 3bet
+    r_raise = spot_data.get("4bet", spot_data.get("3bet", "")) # Распознаем и 3бет, и 4бет
     r_full = spot_data.get("full", "")
     
     grid_html = '<div style="display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:#111;padding:1px;border:1px solid #444;">'
