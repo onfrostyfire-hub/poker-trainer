@@ -27,12 +27,11 @@ BET_SIZES_MAP = {
     "BU def vs 3bet BB": (2.5, 12),
     "SB def vs 3bet BB": (3.0, 9),
     
-    "EP OOP vs 3bet MP": (2.5, 7.5),
-    "EP OOP vs 3bet CO/BU": (2.5, 7.5),
-    "EP IP vs 3bet Blinds": (2.5, 12),
+    "EP vs 3bet MP": (2.5, 7.5),
+    "EP vs 3bet CO/BU": (2.5, 7.5),
+    "EP vs 3bet Blinds": (2.5, 10),
     
-    # Новые споты защиты BB
-    "BBvsBU x2.5 nl500": (1.0, 2.5), # Hero: 1bb (блайнд), Villain: 2.5bb
+    "BBvsBU x2.5 nl500": (1.0, 2.5),
     "BBvsBU x2.5 nl100": (1.0, 2.5)
 }
 
@@ -51,17 +50,22 @@ GROUPS_DEFINITIONS = {
         "CO def vs 3bet SB",
         "CO def vs 3bet BB"
     ],
-    # Новая группа для защит ББ
-    "BB Def vs Open": [
+    "BB def vs pfr": [
         "BBvsBU x2.5 nl500",
         "BBvsBU x2.5 nl100"
+    ],
+    "EP def vs 3bet": [
+        "EP vs 3bet MP",
+        "EP vs 3bet CO/BU",
+        "EP vs 3bet Blinds"
     ]
 }
 
 SINGLE_SPOTS_FILTERS = [
+    "EP open raise", "MP open raise", "CO open raise", "BTN open raise", "SB open raise",
+    "EP vs 3bet MP", "EP vs 3bet CO/BU", "EP vs 3bet Blinds",
     "CO def vs 3bet BU", "CO def vs 3bet SB", "CO def vs 3bet BB",
-    "BU def vs 3bet SB", "BU def vs 3bet BB",
-    "SB def vs 3bet BB",
+    "BU def vs 3bet SB", "BU def vs 3bet BB", "SB def vs 3bet BB",
     "BBvsBU x2.5 nl500", "BBvsBU x2.5 nl100"
 ]
 
@@ -86,10 +90,9 @@ def get_filtered_pool(ranges_db, selected_sources, selected_scenarios, filter_mo
                     if sp in GROUPS_DEFINITIONS[filter_mode]: is_match = True
                 elif filter_mode == sp: is_match = True
                 elif filter_mode == "Early":
-                    if any(x in u for x in ["EP", "UTG", "MP"]) and "DEF" not in u: is_match = True
-                    if "EP" in u and "DEF" in u: is_match = True
+                    if "OPEN RAISE" in u and any(x in u for x in ["EP", "MP"]): is_match = True
                 elif filter_mode == "Late":
-                    if any(x in u for x in ["CO", "BU", "BTN", "SB"]): is_match = True
+                    if "OPEN RAISE" in u and any(x in u for x in ["CO", "BTN", "SB"]): is_match = True
                 elif filter_mode == "Manual": is_match = True
                 
                 if is_match: pool.append(f"{src}|{sc}|{sp}")
@@ -189,17 +192,20 @@ def render_range_matrix(spot_data, target_hand=None):
     if isinstance(spot_data, str): spot_data = {"full": spot_data}
     if not isinstance(spot_data, dict): spot_data = {}
     r_call = spot_data.get("call", "")
-    r_4bet = spot_data.get("4bet", "")
+    r_raise = spot_data.get("4bet", spot_data.get("3bet", "")) # Читает и 4bet, и 3bet
     r_full = spot_data.get("full", "")
+    
     grid_html = '<div style="display:grid;grid-template-columns:repeat(13,1fr);gap:1px;background:#111;padding:1px;border:1px solid #444;">'
     for r1 in RANKS:
         for r2 in RANKS:
             if RANKS.index(r1) == RANKS.index(r2): h = r1 + r2
             elif RANKS.index(r1) < RANKS.index(r2): h = r1 + r2 + 's'
             else: h = r2 + r1 + 'o'
+            
             w_c = get_weight(h, r_call)
-            w_4 = get_weight(h, r_4bet)
+            w_4 = get_weight(h, r_raise)
             w_f = get_weight(h, r_full)
+            
             style = "aspect-ratio:1;display:flex;justify-content:center;align-items:center;font-size:7px;cursor:default;color:#fff;"
             bg = "#2c3034"
             if w_4 > 0 or w_c > 0:
